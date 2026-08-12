@@ -1,0 +1,51 @@
+{
+  $schema: 'https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json',
+  appId: 'com.fuse.envmanager',
+  asar: true,
+  productName: 'Fuse',
+  directories: {
+    output: 'release/${version}',
+  },
+  files: ['dist', 'dist-electron'],
+  icon: 'build/icon.png',
+  extraResources: [
+    { from: 'build', to: 'build', filter: ['icon.*'] },
+    { from: 'dist-cli', to: 'cli' },
+  ],
+  mac: {
+    icon: 'build/icon.icns',
+    category: 'public.app-category.developer-tools',
+    target: [
+      { target: 'dmg', arch: ['universal'] },
+      { target: 'zip', arch: ['universal'] },
+    ],
+    artifactName: '${productName}-Mac-${version}-Installer.${ext}',
+  },
+  win: {
+    icon: 'build/icon.ico',
+    target: [
+      { target: 'nsis', arch: ['x64', 'arm64'] },
+      { target: 'portable', arch: ['x64', 'arm64'] },
+      { target: 'zip', arch: ['x64', 'arm64'] },
+    ],
+  },
+  nsis: {
+    installerIcon: 'build/icon.ico',
+    uninstallerIcon: 'build/icon.ico',
+    installerHeaderIcon: 'build/icon.ico',
+    oneClick: false,
+    perMachine: false,
+    allowToChangeInstallationDirectory: true,
+    deleteAppDataOnUninstall: false,
+    artifactName: '${productName}-Windows-${arch}-${version}-Setup.${ext}',
+  },
+  portable: {
+    artifactName: '${productName}-Windows-${arch}-${version}-Portable.${ext}',
+  },
+  linux: {
+    icon: 'build/icon.png',
+    category: 'Development',
+    target: [{ target: 'AppImage', arch: ['x64', 'arm64'] }],
+    artifactName: '${productName}-Linux-${arch}-${version}.${ext}',
+  },
+}

@@ -1,0 +1,8 @@
+dist
+dist-electron
+dist-cli
+release
+build
+node_modules
+yarn.lock
+.verify-out

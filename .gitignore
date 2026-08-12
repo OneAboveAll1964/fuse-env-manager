@@ -1,0 +1,34 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+release
+dist-electron
+dist-cli
+.verify-out
+
+# Generated icons (regenerate with `yarn icons`)
+build/icon.png
+build/icon.ico
+build/icon.icns
+build/icon-square.png
+build/.icon-render.*
