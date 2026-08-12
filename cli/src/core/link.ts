@@ -7,8 +7,10 @@ export type LinkFile = {
   version: 1;
   workspace?: string;
   project?: string;
+  environment?: string;
   folder?: string;
   file?: string;
+  local?: string;
   projectId?: Id;
   folderId?: Id;
   fileId?: Id;
