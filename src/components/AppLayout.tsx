@@ -26,6 +26,11 @@ export function AppLayout(): JSX.Element {
   }, [refreshStatus]);
 
   useEffect(() => {
+    if (!window.fuse) return undefined;
+    return getBridge().vault.onNavigate((route) => navigate(route));
+  }, [navigate]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       const meta = event.metaKey || event.ctrlKey;
       if (meta && event.key.toLowerCase() === 'k') {

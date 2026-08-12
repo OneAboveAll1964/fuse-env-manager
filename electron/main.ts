@@ -2,6 +2,7 @@ import { app, BrowserWindow, session, shell } from 'electron';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { handleWindowBlur, handleWindowMinimize, lockNow, registerIpc, shutdown } from './ipc';
+import { buildMenu, configureAboutPanel } from './menu';
 import { stopWatching } from './vault';
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -107,6 +108,8 @@ if (!singleInstance) {
 
   void app.whenReady().then(() => {
     setDockIcon();
+    configureAboutPanel();
+    buildMenu({ getWindow: () => mainWindow, onLock: lockNow, isDev });
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) =>
       callback(false),
     );

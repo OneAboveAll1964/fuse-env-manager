@@ -8,6 +8,7 @@ import { HistoryPage } from '@/pages/HistoryPage';
 import { TransferPage } from '@/pages/TransferPage';
 import { CliPage } from '@/pages/CliPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { AboutPage } from '@/pages/AboutPage';
 
 export const router = createHashRouter([
   {
@@ -22,6 +23,7 @@ export const router = createHashRouter([
       { path: '/transfer', element: <TransferPage /> },
       { path: '/cli', element: <CliPage /> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '/about', element: <AboutPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/vault" replace /> },

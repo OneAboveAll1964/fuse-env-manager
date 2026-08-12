@@ -38,6 +38,7 @@ const bridge: FuseBridge = {
     touch: () => invoke('vault:touch'),
     onLocked: (handler) => subscribe<void>('vault:locked', () => handler()),
     onChanged: (handler) => subscribe<VaultData>('vault:changed', handler),
+    onNavigate: (handler) => subscribe<string>('navigate', handler),
   },
 
   settings: {

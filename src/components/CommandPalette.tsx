@@ -7,6 +7,7 @@ import {
   CornerDownLeft,
   FileCode2,
   History,
+  Info,
   Lock,
   Package,
   Search,
@@ -116,6 +117,14 @@ export function CommandPalette({
         subtitle: 'Security, appearance and storage',
         group: 'Go to',
         run: go('/settings'),
+      },
+      {
+        id: 'nav-about',
+        icon: <Info size={15} />,
+        title: 'About Fuse',
+        subtitle: 'Version, links and licence',
+        group: 'Go to',
+        run: go('/about'),
       },
       {
         id: 'cmd-lock',

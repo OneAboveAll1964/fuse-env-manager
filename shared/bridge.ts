@@ -138,6 +138,7 @@ export type FuseBridge = {
     touch(): Promise<void>;
     onLocked(handler: () => void): () => void;
     onChanged(handler: (data: VaultData) => void): () => void;
+    onNavigate(handler: (route: string) => void): () => void;
   };
 
   settings: {
