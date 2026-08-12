@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Eye,
+  Info,
   EyeOff,
   FolderOpen,
   Fingerprint,
@@ -30,6 +32,14 @@ import {
   useConfirm,
   useToast,
 } from '@/components/ui';
+import {
+  ClipboardPreview,
+  FormatPreview,
+  LockPreview,
+  PreviewFrame,
+  RowsPreview,
+  ThemePreview,
+} from '@/components/settings/Previews';
 import { errorMessage, getBridge } from '@/lib/bridge';
 import { useTheme } from '@/lib/theme';
 import { useVault } from '@/lib/vault';
@@ -40,7 +50,8 @@ export function SettingsPage(): JSX.Element {
   const toast = useToast();
   const confirm = useConfirm();
   const { data, setData, status, refreshStatus } = useVault();
-  const { theme, setTheme } = useTheme();
+  const { theme, effective, setTheme } = useTheme();
+  const navigate = useNavigate();
   const [section, setSection] = useState<Section>('security');
   const [draft, setDraft] = useState<AppSettings>(data.settings);
   const [saving, setSaving] = useState(false);
@@ -249,6 +260,9 @@ export function SettingsPage(): JSX.Element {
                   { value: '240', label: '4 hours' },
                 ]}
               />
+              <PreviewFrame label="What that means">
+                <LockPreview minutes={draft.autoLockMinutes} />
+              </PreviewFrame>
               <Switch
                 checked={draft.lockOnSleep}
                 onChange={(v) => patch({ lockOnSleep: v })}
@@ -280,6 +294,9 @@ export function SettingsPage(): JSX.Element {
                 label="Mask secret values in lists"
                 description="Reveal them one at a time with the eye button."
               />
+              <PreviewFrame label="How a secret looks">
+                <RowsPreview dense={draft.denseTable} maskSecrets={draft.maskSecrets} />
+              </PreviewFrame>
               <Select
                 label="Clear the clipboard after"
                 value={String(draft.clipboardClearSeconds)}
@@ -292,6 +309,9 @@ export function SettingsPage(): JSX.Element {
                   { value: '120', label: '2 minutes' },
                 ]}
               />
+              <PreviewFrame label="What that means">
+                <ClipboardPreview seconds={draft.clipboardClearSeconds} />
+              </PreviewFrame>
               <Switch
                 checked={draft.exportIncludeSecrets}
                 onChange={(v) => patch({ exportIncludeSecrets: v })}
@@ -317,18 +337,13 @@ export function SettingsPage(): JSX.Element {
                 <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200">
                   Appearance
                 </span>
-                <SegmentedControl
-                  fullWidth
+                <ThemePreview
                   value={theme}
-                  onChange={(value: ThemeMode) => {
+                  systemIsDark={effective === 'dark'}
+                  onSelect={(value: ThemeMode) => {
                     setTheme(value);
                     patch({ theme: value });
                   }}
-                  items={[
-                    { value: 'light', label: 'Light' },
-                    { value: 'dark', label: 'Dark' },
-                    { value: 'system', label: 'System' },
-                  ]}
                 />
               </div>
               <Switch
@@ -338,6 +353,9 @@ export function SettingsPage(): JSX.Element {
                 label="Compact rows"
                 description="Fit more variables on screen."
               />
+              <PreviewFrame label="Rows">
+                <RowsPreview dense={draft.denseTable} maskSecrets={draft.maskSecrets} />
+              </PreviewFrame>
               <Switch
                 checked={draft.sidebarCollapsed}
                 onChange={(v) => patch({ sidebarCollapsed: v })}
@@ -402,6 +420,13 @@ export function SettingsPage(): JSX.Element {
                 label="Sort variables alphabetically"
                 description="Otherwise they keep the order you added them in."
               />
+              <PreviewFrame label="A file rendered with these settings">
+                <FormatPreview
+                  format={draft.defaultFormat}
+                  quoteMode={draft.quoteMode}
+                  sorted={draft.sortVarsAlphabetically}
+                />
+              </PreviewFrame>
             </div>
           </Card>
 
@@ -531,13 +556,22 @@ export function SettingsPage(): JSX.Element {
             </div>
           </Card>
 
-          <Card title="About" description="Version and build.">
+          <Card title="About" description="Version, links and licence.">
             <div className="flex items-center gap-3">
               <Sparkles size={16} className="text-brand-500" />
               <div className="text-[13px] text-slate-600 dark:text-slate-300">
                 Fuse {status.appVersion} on {status.platform}
               </div>
             </div>
+            <Button
+              className="mt-4"
+              variant="outline"
+              size="sm"
+              iconLeft={<Info size={14} />}
+              onClick={() => navigate('/about')}
+            >
+              Open the about page
+            </Button>
           </Card>
         </div>
       )}
