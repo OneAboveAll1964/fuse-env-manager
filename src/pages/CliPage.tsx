@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import clsx from 'clsx';
 import {
   CheckCircle2,
+  ChevronRight,
   Circle,
   Download,
   Radio,
+  Search,
   Terminal,
   Trash2,
   TriangleAlert,
@@ -14,52 +17,14 @@ import {
   Button,
   Card,
   CodeBlock,
+  Input,
   PageHeader,
   Switch,
-  Table,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
   useToast,
 } from '@/components/ui';
+import { COMMANDS, COMMAND_GROUPS, ENVIRONMENT_VARIABLES } from '@/lib/cli-docs';
 import { errorMessage, getBridge } from '@/lib/bridge';
 import { useVault } from '@/lib/vault';
-
-const COMMANDS: Array<{ command: string; summary: string }> = [
-  { command: 'fuse', summary: 'Interactive menu for everything below' },
-  {
-    command: 'fuse status',
-    summary: 'Vault state, bridge state and what this folder is linked to',
-  },
-  { command: 'fuse unlock [--ttl 15m]', summary: 'Cache an unlocked session for this terminal' },
-  { command: 'fuse lock', summary: 'Drop the cached session right away' },
-  { command: 'fuse pull [path]', summary: 'Pick a file in the vault and write it here' },
-  { command: 'fuse put', summary: 'Quick pull of a single file into the current folder' },
-  { command: 'fuse push [file]', summary: 'Send a local env file into the vault' },
-  { command: 'fuse sync', summary: 'Compare the local file with the vault and reconcile' },
-  {
-    command: 'fuse link / unlink',
-    summary: 'Tie this folder to a project so pulls are one keypress',
-  },
-  { command: 'fuse ls [path]', summary: 'List workspaces, projects, folders and files' },
-  { command: 'fuse get KEY', summary: 'Print one value' },
-  { command: 'fuse set KEY=VALUE', summary: 'Set one or more variables' },
-  { command: 'fuse unset KEY', summary: 'Remove variables' },
-  { command: 'fuse cp / mv SRC DST', summary: 'Copy or move a whole env file' },
-  { command: 'fuse rm PATH', summary: 'Delete a file, folder or project' },
-  { command: 'fuse diff A B', summary: 'Compare two env files key by key' },
-  { command: 'fuse run -- CMD', summary: 'Run a command with the variables injected' },
-  { command: 'fuse search TERM', summary: 'Search keys, values and notes' },
-  { command: 'fuse history [path]', summary: 'Show recent changes' },
-  { command: 'fuse restore ID', summary: 'Put back a previous state' },
-  { command: 'fuse export / import', summary: 'Zip archives from the terminal' },
-  { command: 'fuse gen KIND', summary: 'Generate a password, key, token or UUID' },
-  { command: 'fuse workspace|project|folder|file', summary: 'Manage the tree' },
-  { command: 'fuse completion zsh', summary: 'Print a shell completion script' },
-  { command: 'fuse doctor', summary: 'Check the install, the vault and the bridge' },
-];
 
 export function CliPage(): JSX.Element {
   const toast = useToast();
@@ -76,6 +41,8 @@ export function CliPage(): JSX.Element {
   }>({ running: false, port: null, tokenPath: '' });
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<CliInstallResult | null>(null);
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState<string | null>('pull');
 
   const refresh = async (): Promise<void> => {
     try {
@@ -130,6 +97,19 @@ export function CliPage(): JSX.Element {
       toast.error('That did not work', errorMessage(err));
     }
   };
+
+  const matches = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return COMMANDS;
+    return COMMANDS.filter(
+      (command) =>
+        command.name.toLowerCase().includes(term) ||
+        command.usage.toLowerCase().includes(term) ||
+        command.summary.toLowerCase().includes(term) ||
+        command.detail.toLowerCase().includes(term) ||
+        command.examples.some((example) => example.code.toLowerCase().includes(term)),
+    );
+  }, [query]);
 
   return (
     <div className="h-full w-full overflow-y-auto p-6 lg:p-8">
@@ -256,28 +236,132 @@ export function CliPage(): JSX.Element {
         </div>
       </Card>
 
-      <Card className="mt-5" padding="none" title="Every command">
-        <Table>
-          <THead>
-            <TR>
-              <TH className="w-72">Command</TH>
-              <TH>What it does</TH>
-            </TR>
-          </THead>
-          <TBody>
-            {COMMANDS.map((row) => (
-              <TR key={row.command}>
-                <TD>
-                  <span className="mono-value inline-flex items-center gap-1.5 text-[12px] text-slate-800 dark:text-slate-100">
-                    <Terminal size={11} className="text-slate-400" />
-                    {row.command}
-                  </span>
-                </TD>
-                <TD className="text-[12.5px] text-slate-600 dark:text-slate-300">{row.summary}</TD>
-              </TR>
-            ))}
-          </TBody>
-        </Table>
+      <Card
+        className="mt-5"
+        padding="none"
+        title="Every command"
+        description="Click one to see what it does and how it is used."
+        actions={
+          <div className="w-56">
+            <Input
+              size="sm"
+              value={query}
+              placeholder="Filter commands…"
+              leading={<Search size={13} />}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        }
+      >
+        {matches.length === 0 ? (
+          <div className="px-6 py-10 text-center text-sm text-slate-400">
+            No command matched “{query}”
+          </div>
+        ) : (
+          COMMAND_GROUPS.map((group) => {
+            const inGroup = matches.filter((command) => command.group === group);
+            if (inGroup.length === 0) return null;
+            return (
+              <div key={group}>
+                <div className="border-b border-slate-100 bg-slate-50 px-6 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
+                  {group}
+                </div>
+                {inGroup.map((command) => {
+                  const expanded = open === command.name;
+                  return (
+                    <div
+                      key={command.name}
+                      className="border-b border-slate-100 last:border-b-0 dark:border-slate-800"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpen(expanded ? null : command.name)}
+                        aria-expanded={expanded}
+                        className={clsx(
+                          'flex w-full items-center gap-3 px-6 py-3 text-start transition-colors',
+                          expanded
+                            ? 'bg-brand-50/50 dark:bg-brand-950/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/40',
+                        )}
+                      >
+                        <ChevronRight
+                          size={13}
+                          className={clsx(
+                            'shrink-0 text-slate-400 transition-transform',
+                            expanded && 'rotate-90',
+                          )}
+                        />
+                        <span className="mono-value flex w-64 shrink-0 items-center gap-1.5 text-[12.5px] text-slate-800 dark:text-slate-100">
+                          <Terminal size={11} className="shrink-0 text-slate-400" />
+                          {command.usage}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[12.5px] text-slate-600 dark:text-slate-300">
+                          {command.summary}
+                        </span>
+                        <Badge variant="neutral" className="shrink-0">
+                          {command.examples.length} example
+                          {command.examples.length === 1 ? '' : 's'}
+                        </Badge>
+                      </button>
+
+                      {expanded && (
+                        <div className="space-y-4 border-t border-slate-100 bg-slate-50/50 px-6 py-5 dark:border-slate-800 dark:bg-slate-800/20">
+                          <p className="max-w-3xl text-[13px] leading-relaxed text-slate-600 dark:text-slate-300">
+                            {command.detail}
+                          </p>
+
+                          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                            {command.examples.map((example) => (
+                              <div key={example.title}>
+                                <CodeBlock title={example.title} code={example.code} />
+                                {example.note && (
+                                  <p className="mt-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                                    {example.note}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          {command.flags && command.flags.length > 0 && (
+                            <div>
+                              <div className="label-eyebrow mb-2">Options</div>
+                              <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 md:grid-cols-2">
+                                {command.flags.map(([flag, meaning]) => (
+                                  <div key={flag} className="flex gap-3 text-[12px]">
+                                    <span className="mono-value w-32 shrink-0 text-brand-700 dark:text-brand-300">
+                                      {flag}
+                                    </span>
+                                    <span className="text-slate-600 dark:text-slate-400">
+                                      {meaning}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })
+        )}
+      </Card>
+
+      <Card className="mt-5" title="Environment" description="Recognised by every command.">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2">
+          {ENVIRONMENT_VARIABLES.map(([name, meaning]) => (
+            <div key={name} className="flex gap-3 text-[12.5px]">
+              <span className="mono-value w-52 shrink-0 text-accent-700 dark:text-accent-300">
+                {name}
+              </span>
+              <span className="text-slate-600 dark:text-slate-400">{meaning}</span>
+            </div>
+          ))}
+        </div>
       </Card>
     </div>
   );
