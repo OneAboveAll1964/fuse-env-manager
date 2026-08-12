@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { DEFAULT_SERIALIZE_OPTIONS, serialize } from '@shared/codecs';
-import { FORMATS, FORMAT_LABELS, VAR_TYPE_LABELS } from '@shared/env-types';
+import { FORMATS, VAR_TYPE_LABELS } from '@shared/env-types';
 import { filePath, folderPath, searchVault, varsOf } from '@shared/tree';
 import type { EnvFile, EnvFormat, VaultData } from '@shared/types';
 import { connect } from '../core/client';
@@ -22,6 +22,20 @@ import {
 } from '../ui/output';
 import { confirm, isInteractive, select, type Choice } from '../ui/prompt';
 import { flagBool, flagString, type ParsedArgs } from '../core/args';
+
+function editDistance(a: string, b: string): number {
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const grid = Array.from({ length: rows }, (_, i) => [i, ...Array<number>(cols - 1).fill(0)]);
+  for (let j = 0; j < cols; j += 1) grid[0][j] = j;
+  for (let i = 1; i < rows; i += 1) {
+    for (let j = 1; j < cols; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      grid[i][j] = Math.min(grid[i - 1][j] + 1, grid[i][j - 1] + 1, grid[i - 1][j - 1] + cost);
+    }
+  }
+  return grid[rows - 1][cols - 1];
+}
 
 export async function resolveFile(
   data: VaultData,
@@ -68,7 +82,14 @@ export async function resolveFile(
   }
 
   if (!isInteractive()) {
-    failure('Pass --file "Workspace/Project/folder/.env"');
+    failure('This folder is not linked, so there is nothing to work on');
+    info('Either link it', 'fuse link --project "Storefront API"');
+    if (data.files.length > 0 && data.files.length <= 12) {
+      info('Or name a file', '--file "Workspace/Project/folder/.env"');
+      data.files.forEach((f) => print(`    ${c.grey(filePath(data, f.id))}`));
+    } else {
+      info('Or name a file', '--file "Workspace/Project/folder/.env"');
+    }
     return null;
   }
   return pickFileGuided(data);
@@ -414,17 +435,19 @@ export async function run(args: ParsedArgs): Promise<number> {
 }
 
 export async function exportEnvFormat(args: ParsedArgs): Promise<number> {
+  const format = (flagString(args, 'format') as EnvFormat | undefined) ?? 'shell';
+  if (!FORMATS.includes(format)) {
+    failure(`Unknown format "${format}"`);
+    const near = FORMATS.filter((f) => editDistance(f, format) <= 2);
+    if (near.length > 0) info('Did you mean', near.join(', '));
+    info('Available', FORMATS.join(', '));
+    return 1;
+  }
+
   const client = await connect({ preferDirect: flagBool(args, 'direct'), quiet: true });
   const data = client.data;
   const file = await resolveFile(data, args);
   if (!file) return 1;
-
-  const format = (flagString(args, 'format') as EnvFormat | undefined) ?? 'shell';
-  if (!FORMATS.includes(format)) {
-    failure(`Unknown format "${format}"`);
-    info('Available', FORMATS.map((f) => `${f} (${FORMAT_LABELS[f]})`).join(', '));
-    return 1;
-  }
 
   print(
     serialize(

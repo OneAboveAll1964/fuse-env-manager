@@ -1,9 +1,9 @@
 import { filePath } from '@shared/tree';
-import { connect } from '../core/client';
+import { connect, vaultExists } from '../core/client';
 import { readLink } from '../core/link';
 import { c, symbols } from '../ui/colors';
-import { banner, info, keyValue, print } from '../ui/output';
-import { PromptCancelled, isInteractive, select, type Choice } from '../ui/prompt';
+import { banner, info, keyValue, print, warn } from '../ui/output';
+import { PromptCancelled, confirm, isInteractive, select, type Choice } from '../ui/prompt';
 import type { ParsedArgs } from '../core/args';
 import * as transfer from './transfer';
 import * as vars from './vars';
@@ -11,6 +11,7 @@ import * as tree from './tree';
 import * as history from './history';
 import * as archive from './archive';
 import * as vault from './vault';
+import { init } from './vault';
 
 type Action =
   | 'pull'
@@ -31,6 +32,22 @@ type Action =
   | 'quit';
 
 export async function menu(args: ParsedArgs): Promise<number> {
+  if (!vaultExists()) {
+    banner();
+    warn('There is no vault on this machine yet');
+    print();
+    if (!isInteractive()) {
+      info('Create one with', 'fuse init');
+      return 1;
+    }
+    const now = await confirm('Create one now?', true);
+    if (!now) {
+      info('When you are ready', 'fuse init');
+      return 0;
+    }
+    return init(args);
+  }
+
   if (!isInteractive()) {
     info('Run fuse --help to see every command');
     return 0;
