@@ -1,0 +1,60 @@
+import {
+  Bot,
+  Boxes,
+  Briefcase,
+  Building2,
+  Cloud,
+  Code2,
+  Cpu,
+  Database,
+  FileCode2,
+  Flame,
+  Folder,
+  Globe,
+  Home,
+  Landmark,
+  Layers,
+  Monitor,
+  Package,
+  Rocket,
+  Server,
+  ShoppingCart,
+  Smartphone,
+  Terminal,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react';
+
+const REGISTRY: Record<string, LucideIcon> = {
+  Bot,
+  Boxes,
+  Briefcase,
+  Building2,
+  Cloud,
+  Code2,
+  Cpu,
+  Database,
+  FileCode2,
+  Flame,
+  Folder,
+  Globe,
+  Home,
+  Landmark,
+  Layers,
+  Monitor,
+  Package,
+  Rocket,
+  Server,
+  ShoppingCart,
+  Smartphone,
+  Terminal,
+  Users,
+  Wallet,
+};
+
+export function iconByName(name: string, fallback: LucideIcon = Package): LucideIcon {
+  return REGISTRY[name] ?? fallback;
+}
+
+export const ICON_NAMES = Object.keys(REGISTRY);
