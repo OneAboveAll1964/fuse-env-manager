@@ -19,6 +19,11 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
         example: 'fuse push .env',
       },
       { command: 'sync', summary: 'Compare this folder with the vault and pick a direction' },
+      {
+        command: 'use [environment]',
+        summary: 'Switch a linked folder between development, staging and production',
+        example: 'fuse use production',
+      },
       { command: 'link', summary: 'Tie this folder to a file so pulls stop asking' },
       { command: 'unlink', summary: 'Remove the link from this folder' },
     ],

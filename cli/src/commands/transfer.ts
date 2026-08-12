@@ -602,6 +602,191 @@ export async function sync(args: ParsedArgs): Promise<number> {
   return 0;
 }
 
+export type Environment = {
+  fileId: string;
+  label: string;
+  folder: string;
+  file: string;
+  vars: number;
+  current: boolean;
+};
+
+export function listEnvironments(
+  data: VaultData,
+  projectId: string,
+  currentFileId: string | null,
+): Environment[] {
+  const files = data.files.filter((f) => f.projectId === projectId);
+  const byFolder = new Map<string, number>();
+  for (const file of files) {
+    const key = folderPath(data, file.folderId).join('/');
+    byFolder.set(key, (byFolder.get(key) ?? 0) + 1);
+  }
+
+  return files
+    .map((file) => {
+      const folder = folderPath(data, file.folderId).join('/');
+      const crowded = (byFolder.get(folder) ?? 0) > 1;
+      const label = folder ? (crowded ? `${folder}/${file.name}` : folder) : file.name;
+      return {
+        fileId: file.id,
+        label,
+        folder,
+        file: file.name,
+        vars: data.vars.filter((v) => v.fileId === file.id).length,
+        current: file.id === currentFileId,
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function matchEnvironment(list: Environment[], query: string): Environment[] {
+  const term = query.trim().toLowerCase();
+  if (!term) return [];
+  const exact = list.filter(
+    (env) =>
+      env.label.toLowerCase() === term ||
+      env.folder.toLowerCase() === term ||
+      env.file.toLowerCase() === term,
+  );
+  if (exact.length > 0) return exact;
+  return list.filter(
+    (env) =>
+      env.label.toLowerCase().includes(term) ||
+      env.folder.toLowerCase().includes(term) ||
+      env.file.toLowerCase().includes(term),
+  );
+}
+
+export async function use(args: ParsedArgs): Promise<number> {
+  const cwd = process.cwd();
+  const client = await connect({ preferDirect: flagBool(args, 'direct') });
+  const data = client.data;
+
+  const found = readLink(cwd);
+  if (!found) {
+    failure('This folder is not linked to anything');
+    info('Link it first with', 'fuse link');
+    return 1;
+  }
+
+  const currentFileId = resolveLinkedFile(data, found.link);
+  const projectId =
+    found.link.projectId && data.projects.some((p) => p.id === found.link.projectId)
+      ? found.link.projectId
+      : (data.files.find((f) => f.id === currentFileId)?.projectId ?? null);
+
+  if (!projectId) {
+    failure('The link in this folder points at a project that no longer exists');
+    info('Link it again with', 'fuse link');
+    return 1;
+  }
+
+  const environments = listEnvironments(data, projectId, currentFileId);
+  const project = data.projects.find((p) => p.id === projectId);
+
+  if (environments.length === 0) {
+    failure(`${project?.name ?? 'That project'} has no env files yet`);
+    return 1;
+  }
+
+  if (flagBool(args, 'list') || flagBool(args, 'json')) {
+    if (flagBool(args, 'json')) {
+      print(JSON.stringify(environments, null, 2));
+      return 0;
+    }
+    heading('Environments', project?.name ?? '');
+    table(
+      ['', 'environment', 'file', 'variables'],
+      environments.map((env) => [
+        env.current ? c.green(symbols.tick) : ' ',
+        env.current ? c.brightCyan(env.label) : env.label,
+        c.grey(env.file),
+        String(env.vars),
+      ]),
+      [2, 34, 24, 10],
+    );
+    print();
+    info('Switch with', 'fuse use <environment>');
+    return 0;
+  }
+
+  const query = args.positional[0];
+  let target: Environment | null = null;
+
+  if (query) {
+    const matches = matchEnvironment(environments, query);
+    if (matches.length === 0) {
+      failure(`No environment in ${project?.name ?? 'this project'} matched "${query}"`);
+      info('Available', environments.map((env) => env.label).join(', '));
+      return 1;
+    }
+    if (matches.length > 1) {
+      if (!isInteractive()) {
+        failure(`"${query}" matched ${matches.length} environments. Be more specific.`);
+        matches.forEach((env) => print(`    ${c.grey(env.label)}`));
+        return 1;
+      }
+      const picked = await select<string>(
+        `"${query}" matched several`,
+        matches.map<Choice<string>>((env) => ({ value: env.fileId, label: env.label })),
+      );
+      target = matches.find((env) => env.fileId === picked) ?? null;
+    } else {
+      target = matches[0];
+    }
+  } else {
+    if (!isInteractive()) {
+      failure('Give an environment: fuse use production');
+      info('Available', environments.map((env) => env.label).join(', '));
+      return 1;
+    }
+    const picked = await select<string>(
+      `Which environment for ${project?.name ?? 'this folder'}?`,
+      environments.map<Choice<string>>((env) => ({
+        value: env.fileId,
+        label: env.current ? `${env.label} ${c.grey('(current)')}` : env.label,
+        hint: `${env.file} · ${env.vars} vars`,
+      })),
+      {
+        initial: Math.max(
+          0,
+          environments.findIndex((env) => env.current),
+        ),
+      },
+    );
+    target = environments.find((env) => env.fileId === picked) ?? null;
+  }
+
+  if (!target) return 1;
+
+  const file = data.files.find((f) => f.id === target.fileId);
+  if (!file) {
+    failure('That env file no longer exists');
+    return 1;
+  }
+
+  const workspace = data.workspaces.find((w) => w.id === project?.workspaceId);
+  writeLink(found.dir, {
+    version: 1,
+    workspace: workspace?.name,
+    project: project?.name,
+    folder: folderPath(data, file.folderId).join('/') || undefined,
+    file: file.name,
+    fileId: file.id,
+    projectId: file.projectId,
+    folderId: file.folderId ?? undefined,
+  });
+
+  const localName = found.link.file && found.link.file !== file.name ? found.link.file : file.name;
+
+  return pull({
+    ...args,
+    positional: [],
+    flags: { ...args.flags, file: filePath(data, file.id), as: localName },
+  });
+}
+
 export async function link(args: ParsedArgs): Promise<number> {
   const cwd = process.cwd();
   const client = await connect({ preferDirect: flagBool(args, 'direct') });

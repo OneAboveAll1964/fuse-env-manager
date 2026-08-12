@@ -9,6 +9,7 @@ import { connect, unlockAndCache, vaultExists } from '../core/client';
 import { readBridgeFile, bridgeAvailable } from '../core/bridge-client';
 import { clearSession, parseDuration, sessionExpiry } from '../core/session';
 import { projectForDirectory, readLink, resolveLinkedFile } from '../core/link';
+import { listEnvironments } from './transfer';
 import { createFile, createFolder, createProject, createWorkspace } from '../core/mutations';
 import { c, symbols } from '../ui/colors';
 import { box, failure, heading, info, keyValue, print, success, warn } from '../ui/output';
@@ -179,6 +180,19 @@ export async function status(args: ParsedArgs): Promise<number> {
       if (fileId) {
         print();
         success('This folder resolves to', filePath(data, fileId));
+        const projectId = data.files.find((f) => f.id === fileId)?.projectId;
+        if (projectId) {
+          const environments = listEnvironments(data, projectId, fileId);
+          if (environments.length > 1) {
+            print();
+            print(
+              `  ${c.grey('environments')}  ${environments
+                .map((env) => (env.current ? c.brightCyan(`${env.label} *`) : c.grey(env.label)))
+                .join('  ')}`,
+            );
+            print(`  ${c.grey('switch with')}   ${c.grey('fuse use <environment>')}`);
+          }
+        }
       } else {
         print();
         warn('The link in this folder points at something that no longer exists');

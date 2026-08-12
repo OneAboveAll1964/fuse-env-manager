@@ -135,6 +135,32 @@ export const COMMANDS: CommandDoc[] = [
     ],
   },
   {
+    name: 'use',
+    usage: 'fuse use [environment]',
+    group: 'Everyday',
+    summary: 'Switch a linked folder between development, staging and production',
+    detail:
+      'Once a folder is linked, this swaps which environment it is pointing at and rewrites the local file in one step. It lists the env files in the linked project, so development, staging and production, and moves the link to the one you pick. Run it with no argument for a list to choose from, with the current one already highlighted.',
+    examples: [
+      { title: 'Pick from a list', code: 'fuse use' },
+      { title: 'Straight to production', code: 'fuse use production' },
+      { title: 'Prefixes are enough', code: 'fuse use prod' },
+      {
+        title: 'See what is available without switching',
+        code: 'fuse use --list',
+      },
+      {
+        title: 'In a script, overwriting the local file',
+        code: 'fuse use staging --yes',
+      },
+    ],
+    flags: [
+      ['--list', 'Show the environments and which one is current'],
+      ['--json', 'The same list, machine readable'],
+      ['--yes, -y', 'Overwrite the local file without asking'],
+    ],
+  },
+  {
     name: 'link',
     usage: 'fuse link',
     group: 'Everyday',

@@ -25,6 +25,9 @@ const ALIASES: Record<string, string> = {
   ws: 'workspace',
   proj: 'project',
   dir: 'folder',
+  env: 'use',
+  switch: 'use',
+  checkout: 'use',
   'export-zip': 'export-zip',
   zip: 'export-zip',
   unzip: 'import',
@@ -49,6 +52,8 @@ async function dispatch(args: ParsedArgs): Promise<number> {
       return transfer.push(args);
     case 'sync':
       return transfer.sync(args);
+    case 'use':
+      return transfer.use(args);
     case 'link':
       return transfer.link(args);
     case 'unlink':

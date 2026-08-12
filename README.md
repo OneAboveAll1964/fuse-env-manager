@@ -49,6 +49,7 @@ cd ~/code/my-new-service
 fuse pull                  # pick a file from the vault and write it here
 fuse push .env             # send this folder's file back
 fuse link                  # tie this folder to that file, so pull stops asking
+fuse use production        # swap that folder to another environment in one step
 fuse run -- npm start      # run with the variables injected, nothing on disk
 fuse diff dev prod         # what is different between two environments
 ```
