@@ -27,7 +27,7 @@ import type {
   VaultData,
   Workspace,
 } from '../shared/types';
-import { clearDeviceKey, loadDeviceKey, saveDeviceKey, deviceKeyExists } from './keychain';
+import { clearDeviceKey, deviceKeyExists, saveDeviceKey, unlockDeviceKey } from './keychain';
 
 export type Snapshot = {
   workspaces?: Workspace[];
@@ -211,18 +211,17 @@ export async function unlockWithPassword(password: string): Promise<void> {
   cache = normalise(JSON.parse(plaintext.toString('utf8')) as Partial<VaultData>);
 }
 
-export async function unlockWithDeviceKey(): Promise<void> {
-  const key = loadDeviceKey();
-  if (!key) throw new VaultError('no-device-key', 'This device has not been remembered');
+export async function unlockWithDeviceKey(pin: string): Promise<void> {
+  const key = unlockDeviceKey(pin);
   const file = await readVaultFile();
   const plaintext = decryptVault(file, key);
   dek = key;
   cache = normalise(JSON.parse(plaintext.toString('utf8')) as Partial<VaultData>);
 }
 
-export function rememberDevice(): void {
+export function rememberDevice(pin: string, useBiometrics: boolean): void {
   if (!dek) throw new VaultError('locked', 'The vault is locked');
-  saveDeviceKey(dek);
+  saveDeviceKey(dek, pin, useBiometrics);
 }
 
 export function forgetDevice(): void {
@@ -248,7 +247,6 @@ export async function changePassword(
   const rewrapped = rewrapVault(file, currentPassword, nextPassword, hint);
   await writeVaultFile(rewrapped);
   dek = unwrapDek(rewrapped, nextPassword);
-  if (deviceKeyExists()) saveDeviceKey(dek);
 }
 
 export async function reload(): Promise<VaultData> {

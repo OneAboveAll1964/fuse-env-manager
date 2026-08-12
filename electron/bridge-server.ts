@@ -5,14 +5,7 @@ import { bridgePath, defaultVaultDir } from '../shared/paths';
 import { searchVault } from '../shared/tree';
 import type { VaultData } from '../shared/types';
 import * as ops from './operations';
-import {
-  isLocked,
-  lock,
-  replaceVault,
-  requireUnlocked,
-  unlockWithDeviceKey,
-  unlockWithPassword,
-} from './vault';
+import { isLocked, lock, replaceVault, requireUnlocked, unlockWithPassword } from './vault';
 
 type Handler = (args: unknown[]) => unknown;
 
@@ -77,8 +70,8 @@ const handlers: Record<string, Handler> = {
   },
   'vault.unlock': async (args) => {
     const password = arg<string>(args, 0);
-    if (password) await unlockWithPassword(password);
-    else await unlockWithDeviceKey();
+    if (!password) throw new Error('The master password is required to unlock from the CLI');
+    await unlockWithPassword(password);
     return { locked: isLocked() };
   },
   'search.run': (args) =>

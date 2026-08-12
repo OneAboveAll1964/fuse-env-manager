@@ -28,6 +28,11 @@ export type UnlockResult = {
   status: VaultStatus;
 };
 
+export type DeviceUnlock = {
+  pin: string;
+  useBiometrics: boolean;
+} | null;
+
 export type PickedFile = {
   name: string;
   path: string;
@@ -121,11 +126,12 @@ export type FuseBridge = {
     create(input: {
       password: string;
       hint: string;
-      rememberOnDevice: boolean;
+      rememberOnDevice: DeviceUnlock;
       sample: boolean;
     }): Promise<UnlockResult>;
-    unlock(input: { password: string; rememberOnDevice: boolean }): Promise<UnlockResult>;
-    unlockWithDevice(): Promise<UnlockResult>;
+    unlock(input: { password: string; rememberOnDevice: DeviceUnlock }): Promise<UnlockResult>;
+    unlockWithDevice(input: { pin: string }): Promise<UnlockResult>;
+    biometricUnlock(): Promise<UnlockResult>;
     lock(): Promise<VaultStatus>;
     load(): Promise<VaultData>;
     changePassword(input: {
@@ -134,7 +140,7 @@ export type FuseBridge = {
       hint: string;
     }): Promise<UnlockResult>;
     forgetDevice(): Promise<VaultStatus>;
-    rememberOnDevice(): Promise<VaultStatus>;
+    rememberOnDevice(input: { pin: string; useBiometrics: boolean }): Promise<VaultStatus>;
     touch(): Promise<void>;
     onLocked(handler: () => void): () => void;
     onChanged(handler: (data: VaultData) => void): () => void;

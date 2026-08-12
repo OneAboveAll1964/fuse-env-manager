@@ -40,6 +40,7 @@ import {
   RowsPreview,
   ThemePreview,
 } from '@/components/settings/Previews';
+import { DevicePinFields, pinReady } from '@/components/DevicePinFields';
 import { errorMessage, getBridge } from '@/lib/bridge';
 import { useTheme } from '@/lib/theme';
 import { useVault } from '@/lib/vault';
@@ -63,6 +64,10 @@ export function SettingsPage(): JSX.Element {
   const [hint, setHint] = useState(status.hint);
   const [reveal, setReveal] = useState(false);
   const [changing, setChanging] = useState(false);
+  const [deviceDialog, setDeviceDialog] = useState(false);
+  const [devicePin, setDevicePin] = useState('');
+  const [deviceConfirmPin, setDeviceConfirmPin] = useState('');
+  const [deviceBiometrics, setDeviceBiometrics] = useState(false);
 
   useEffect(() => {
     setDraft(data.settings);
@@ -140,10 +145,20 @@ export function SettingsPage(): JSX.Element {
   };
 
   const rememberDevice = async (): Promise<void> => {
+    if (!pinReady(devicePin, deviceConfirmPin)) {
+      toast.warning('Set a PIN of at least 4 characters, twice');
+      return;
+    }
     try {
-      await getBridge().vault.rememberOnDevice();
+      await getBridge().vault.rememberOnDevice({
+        pin: devicePin,
+        useBiometrics: deviceBiometrics,
+      });
       await refreshStatus();
-      toast.success('This device can now unlock without the password');
+      setDeviceDialog(false);
+      setDevicePin('');
+      setDeviceConfirmPin('');
+      toast.success('This device is remembered', 'It asks for the PIN, not the master password.');
     } catch (err) {
       toast.error('That did not work', errorMessage(err));
     }
@@ -217,30 +232,44 @@ export function SettingsPage(): JSX.Element {
                 <Fingerprint size={16} className="mt-0.5 shrink-0 text-brand-500" />
                 <div className="text-[12.5px] text-slate-600 dark:text-slate-300">
                   {status.deviceKey
-                    ? 'The key is stored in this system keychain, so Fuse and the CLI can unlock silently.'
+                    ? `Unlocking here asks for this device's PIN instead of the master password${status.deviceKeyBiometrics ? ', and Touch ID can stand in for the PIN' : ''}.`
                     : status.encryptionAvailable
-                      ? 'Store the key in the system keychain to skip the password on this device.'
+                      ? 'Set a PIN and this device can open the vault without the master password.'
                       : 'This device has no secure key store, so the password is always required.'}
                 </div>
               </div>
-              {status.encryptionAvailable &&
-                (status.deviceKey ? (
-                  <Button
-                    variant="outline"
-                    iconLeft={<Trash2 size={15} />}
-                    onClick={() => void forgetDevice()}
-                  >
-                    Forget this device
-                  </Button>
-                ) : (
+              {status.deviceKey && (
+                <div className="rounded-xl border border-slate-200 px-3.5 py-2.5 text-[12px] text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  {status.deviceAttemptsLeft} wrong PIN
+                  {status.deviceAttemptsLeft === 1 ? '' : 's'} left before this device is forgotten
+                  and the master password is required again.
+                </div>
+              )}
+              {status.encryptionAvailable && (
+                <div className="flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     iconLeft={<Fingerprint size={15} />}
-                    onClick={() => void rememberDevice()}
+                    onClick={() => {
+                      setDevicePin('');
+                      setDeviceConfirmPin('');
+                      setDeviceBiometrics(status.deviceKeyBiometrics || status.biometricsAvailable);
+                      setDeviceDialog(true);
+                    }}
                   >
-                    Remember this device
+                    {status.deviceKey ? 'Change the PIN' : 'Remember this device'}
                   </Button>
-                ))}
+                  {status.deviceKey && (
+                    <Button
+                      variant="outline"
+                      iconLeft={<Trash2 size={15} />}
+                      onClick={() => void forgetDevice()}
+                    >
+                      Forget this device
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
 
@@ -575,6 +604,38 @@ export function SettingsPage(): JSX.Element {
           </Card>
         </div>
       )}
+
+      <Modal
+        open={deviceDialog}
+        onClose={() => setDeviceDialog(false)}
+        size="sm"
+        eyebrow="This device"
+        title={status.deviceKey ? 'Change the device PIN' : 'Remember this device'}
+        description="Unlocking here will ask for this PIN instead of your master password. Five wrong tries and the device is forgotten."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeviceDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!pinReady(devicePin, deviceConfirmPin)}
+              onClick={() => void rememberDevice()}
+            >
+              {status.deviceKey ? 'Change PIN' : 'Remember device'}
+            </Button>
+          </>
+        }
+      >
+        <DevicePinFields
+          pin={devicePin}
+          confirmPin={deviceConfirmPin}
+          useBiometrics={deviceBiometrics}
+          biometricsAvailable={status.biometricsAvailable}
+          onPin={setDevicePin}
+          onConfirmPin={setDeviceConfirmPin}
+          onUseBiometrics={setDeviceBiometrics}
+        />
+      </Modal>
 
       <Modal
         open={passwordOpen}

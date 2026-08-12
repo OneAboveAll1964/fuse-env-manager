@@ -21,6 +21,7 @@ import type {
 } from '../shared/types';
 import type {
   BulkVarInput,
+  DeviceUnlock,
   FileInput,
   FolderInput,
   PickedFile,
@@ -34,6 +35,13 @@ import * as ops from './operations';
 import * as archive from './archive';
 import { bridgeInfo, setBridgeChangeHandler, startBridge, stopBridge } from './bridge-server';
 import { bundledCliPath, installCli, installedCliPath, uninstallCli } from './cli-install';
+import {
+  attemptsLeft,
+  biometricsAvailable,
+  deviceKeyUsesBiometrics,
+  promptBiometrics,
+  readBiometricPin,
+} from './keychain';
 import { encryptionAvailable } from './keychain';
 import {
   changePassword,
@@ -108,6 +116,9 @@ function status(): VaultStatus {
     vaultPath,
     hint: vaultHint(),
     deviceKey: hasDeviceKey(),
+    deviceKeyBiometrics: deviceKeyUsesBiometrics(),
+    deviceAttemptsLeft: attemptsLeft(),
+    biometricsAvailable: biometricsAvailable(),
     encryptionAvailable: encryptionAvailable(),
     bridgeRunning: info.running,
     bridgePort: info.port,
@@ -166,13 +177,15 @@ export function registerIpc(resolveWindow: () => BrowserWindow | null): void {
     'vault:create',
     async (
       _e,
-      input: { password: string; hint: string; rememberOnDevice: boolean; sample: boolean },
+      input: { password: string; hint: string; rememberOnDevice: DeviceUnlock; sample: boolean },
     ): Promise<UnlockResult> => {
       try {
         if (isInitialized()) return unlockResult('A vault already exists on this device');
         const seed = input.sample ? seedSampleVault() : emptyVault();
         await createNewVault(input.password, input.hint, seed);
-        if (input.rememberOnDevice && encryptionAvailable()) rememberDevice();
+        if (input.rememberOnDevice && encryptionAvailable()) {
+          rememberDevice(input.rememberOnDevice.pin, input.rememberOnDevice.useBiometrics);
+        }
         touch();
         startLockTimer();
         syncBridge();
@@ -186,10 +199,15 @@ export function registerIpc(resolveWindow: () => BrowserWindow | null): void {
 
   ipcMain.handle(
     'vault:unlock',
-    async (_e, input: { password: string; rememberOnDevice: boolean }): Promise<UnlockResult> => {
+    async (
+      _e,
+      input: { password: string; rememberOnDevice: DeviceUnlock },
+    ): Promise<UnlockResult> => {
       try {
         await unlockWithPassword(input.password);
-        if (input.rememberOnDevice && encryptionAvailable()) rememberDevice();
+        if (input.rememberOnDevice && encryptionAvailable()) {
+          rememberDevice(input.rememberOnDevice.pin, input.rememberOnDevice.useBiometrics);
+        }
         touch();
         startLockTimer();
         syncBridge();
@@ -201,9 +219,30 @@ export function registerIpc(resolveWindow: () => BrowserWindow | null): void {
     },
   );
 
-  ipcMain.handle('vault:unlock-device', async (): Promise<UnlockResult> => {
+  ipcMain.handle(
+    'vault:unlock-device',
+    async (_e, input: { pin: string }): Promise<UnlockResult> => {
+      try {
+        await unlockWithDeviceKey(input.pin);
+        touch();
+        startLockTimer();
+        syncBridge();
+        watchVaultFile(onExternalChange);
+        return unlockResult(null);
+      } catch (err) {
+        return unlockResult(errorMessage(err));
+      }
+    },
+  );
+
+  ipcMain.handle('vault:biometric-unlock', async (): Promise<UnlockResult> => {
     try {
-      await unlockWithDeviceKey();
+      if (!deviceKeyUsesBiometrics()) return unlockResult('Touch ID is not set up for this vault');
+      const approved = await promptBiometrics('unlock Fuse');
+      if (!approved) return unlockResult('Touch ID was not approved');
+      const pin = readBiometricPin();
+      if (!pin) return unlockResult('The stored PIN could not be read');
+      await unlockWithDeviceKey(pin);
       touch();
       startLockTimer();
       syncBridge();
@@ -241,8 +280,8 @@ export function registerIpc(resolveWindow: () => BrowserWindow | null): void {
     return status();
   });
 
-  ipcMain.handle('vault:remember-device', () => {
-    rememberDevice();
+  ipcMain.handle('vault:remember-device', (_e, input: { pin: string; useBiometrics: boolean }) => {
+    rememberDevice(input.pin, input.useBiometrics);
     return status();
   });
 

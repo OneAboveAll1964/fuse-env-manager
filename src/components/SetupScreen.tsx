@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
 import { passwordStrength } from '@shared/password';
 import { Button, Input, Meter, Switch } from '@/components/ui';
+import { DevicePinFields, pinReady } from '@/components/DevicePinFields';
 import { AppMark } from '@/components/AppMark';
 import { WindowControls } from '@/components/WindowControls';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -16,6 +17,9 @@ export function SetupScreen(): JSX.Element {
   const [confirm, setConfirm] = useState('');
   const [hint, setHint] = useState('');
   const [remember, setRemember] = useState(true);
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [useBiometrics, setUseBiometrics] = useState(false);
   const [sample, setSample] = useState(true);
   const [reveal, setReveal] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,7 +28,8 @@ export function SetupScreen(): JSX.Element {
   const strength = useMemo(() => passwordStrength(password), [password]);
   const mismatch = confirm.length > 0 && confirm !== password;
   const tooShort = password.length > 0 && password.length < 8;
-  const canSubmit = password.length >= 8 && password === confirm && !busy;
+  const deviceReady = !remember || !status.encryptionAvailable || pinReady(pin, confirmPin);
+  const canSubmit = password.length >= 8 && password === confirm && deviceReady && !busy;
 
   const create = async (): Promise<void> => {
     setBusy(true);
@@ -33,7 +38,7 @@ export function SetupScreen(): JSX.Element {
       const result = await getBridge().vault.create({
         password,
         hint: hint.trim(),
-        rememberOnDevice: remember && status.encryptionAvailable,
+        rememberOnDevice: remember && status.encryptionAvailable ? { pin, useBiometrics } : null,
         sample,
       });
       if (!result.ok) {
@@ -145,6 +150,17 @@ export function SetupScreen(): JSX.Element {
                     : 'This device has no secure key store available.'
                 }
               />
+              {remember && status.encryptionAvailable && (
+                <DevicePinFields
+                  pin={pin}
+                  confirmPin={confirmPin}
+                  useBiometrics={useBiometrics}
+                  biometricsAvailable={status.biometricsAvailable}
+                  onPin={setPin}
+                  onConfirmPin={setConfirmPin}
+                  onUseBiometrics={setUseBiometrics}
+                />
+              )}
               <Switch
                 checked={sample}
                 onChange={setSample}

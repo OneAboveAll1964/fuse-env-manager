@@ -199,6 +199,9 @@ export type VaultStatus = {
   vaultPath: string;
   hint: string;
   deviceKey: boolean;
+  deviceKeyBiometrics: boolean;
+  deviceAttemptsLeft: number;
+  biometricsAvailable: boolean;
   encryptionAvailable: boolean;
   bridgeRunning: boolean;
   bridgePort: number | null;

@@ -25,10 +25,19 @@ encrypts it is itself encrypted with a key stretched from your master password
 through scrypt, so the password is never written to disk and changing it does not
 re-encrypt everything.
 
-If you ask Fuse to remember the device, that key is handed to the system keychain
-instead, which is Keychain on macOS and DPAPI on Windows. The app and the `fuse`
-command can then open the vault without you typing anything. Forget the device in
-Settings and the password is required again.
+If you ask Fuse to remember the device, that key is wrapped a second time with a
+short PIN you choose and handed to the system keychain, which is Keychain on
+macOS and DPAPI on Windows. Both are then needed to open the vault here: access
+to your account, and the PIN. Someone who walks up to an unlocked laptop cannot
+simply press a button and read your secrets.
+
+Five wrong PINs and Fuse forgets the device altogether, so the master password is
+required again. On a Mac with Touch ID you can let it stand in for typing the
+PIN, which keeps the PIN in the keychain and releases it only after Touch ID
+approves.
+
+The `fuse` command never uses the device key. With the app closed it asks for the
+master password itself.
 
 ## The command line
 
@@ -135,24 +144,27 @@ settings that change how something looks show you a live preview.
 
 ## Where things live
 
-| Platform | Vault folder |
-| --- | --- |
-| macOS | `~/Library/Application Support/Fuse` |
-| Windows | `%APPDATA%\Fuse` |
-| Linux | `~/.config/Fuse` |
+| Platform | Vault folder                         |
+| -------- | ------------------------------------ |
+| macOS    | `~/Library/Application Support/Fuse` |
+| Windows  | `%APPDATA%\Fuse`                     |
+| Linux    | `~/.config/Fuse`                     |
 
 `FUSE_HOME` points both the app and the command somewhere else.
 
 `vault.fuse` is the encrypted vault and `vault.fuse.bak` is the version before the
-last write. `device.key` only exists if you asked to be remembered. `bridge.json`
-holds the loopback port and token while the app is open, and `session.json` is the
-command line's cached session. All of them are written so that only your account
-can read them.
+last write. `device.key` only exists if you asked to be remembered, with
+`device.biometric` alongside it if you allowed Touch ID and `device.attempts`
+counting wrong PINs. `bridge.json` holds the loopback port and token while the app
+is open, and `session.json` is the command line's cached session. All of them are
+written so that only your account can read them.
 
 ## If something is not right
 
 - **You have forgotten the master password.** There is nothing anyone can do. That
   is the point of it. Restore from a zip export if you have one.
+- **You have forgotten the device PIN.** Get it wrong five times, or press
+  **Forget this device** in Settings, and Fuse falls back to the master password.
 - **The `fuse` command is not found.** Install it from the Command line page, then
   open a new terminal. On Windows the folder it goes into may need adding to your
   PATH; the page tells you if it does.
