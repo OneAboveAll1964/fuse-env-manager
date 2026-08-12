@@ -32,3 +32,6 @@ build/icon.ico
 build/icon.icns
 build/icon-square.png
 build/.icon-render.*
+
+# TypeScript incremental build info
+*.tsbuildinfo
