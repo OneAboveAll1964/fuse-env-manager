@@ -81,10 +81,10 @@ export function VarTable({
               {allSelected && <Check size={10} />}
             </button>
           </TH>
-          <TH>Key</TH>
-          <TH>Value</TH>
-          <TH className="w-32">Type</TH>
-          <TH align="end" className="w-32">
+          <TH className="w-56">Key</TH>
+          <TH className="w-full max-w-0">Value</TH>
+          <TH className="w-28">Type</TH>
+          <TH align="end" className="w-28">
             Actions
           </TH>
         </TR>
@@ -121,7 +121,7 @@ export function VarTable({
                 </button>
               </TD>
 
-              <TD className={cellPadding}>
+              <TD className={clsx(cellPadding, 'w-56')}>
                 <div className="flex items-center gap-1.5">
                   {variable.secret && <KeyRound size={11} className="shrink-0 text-amber-500" />}
                   <span
@@ -140,7 +140,7 @@ export function VarTable({
                 )}
               </TD>
 
-              <TD className={cellPadding}>
+              <TD className={clsx(cellPadding, 'w-full max-w-0')}>
                 {editing ? (
                   <input
                     ref={inputRef}
@@ -186,7 +186,10 @@ export function VarTable({
               </TD>
 
               <TD className={cellPadding}>
-                <Badge variant={variable.secret ? 'warning' : 'neutral'}>
+                <Badge
+                  variant={variable.secret ? 'warning' : 'neutral'}
+                  className="whitespace-nowrap"
+                >
                   {VAR_TYPE_LABELS[variable.type]}
                 </Badge>
               </TD>

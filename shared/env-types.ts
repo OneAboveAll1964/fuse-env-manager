@@ -36,7 +36,7 @@ export const VAR_TYPE_LABELS: Record<VarType, string> = {
   path: 'File path',
   secret: 'Secret',
   token: 'API token',
-  connection: 'Connection string',
+  connection: 'Connection',
   duration: 'Duration',
   base64: 'Base64',
   uuid: 'UUID',

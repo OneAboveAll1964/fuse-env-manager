@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
-import { passwordStrength } from '@shared/vault-crypto';
+import { passwordStrength } from '@shared/password';
 import { Button, Input, Meter, Switch } from '@/components/ui';
 import { AppMark } from '@/components/AppMark';
 import { WindowControls } from '@/components/WindowControls';

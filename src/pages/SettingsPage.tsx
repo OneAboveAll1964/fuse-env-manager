@@ -12,7 +12,7 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import { passwordStrength } from '@shared/vault-crypto';
+import { passwordStrength } from '@shared/password';
 import { FORMATS, FORMAT_LABELS } from '@shared/env-types';
 import { LANGUAGES } from '@/i18n';
 import type { AppSettings, EnvFormat, QuoteMode, ThemeMode } from '@shared/types';
