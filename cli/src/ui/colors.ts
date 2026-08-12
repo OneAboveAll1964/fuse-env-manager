@@ -95,6 +95,7 @@ export const ansi = {
   hideCursor: `${ESC}?25l`,
   showCursor: `${ESC}?25h`,
   clearLine: `${ESC}2K`,
+  clearDown: `${ESC}0J`,
   cursorUp: (n: number) => `${ESC}${n}A`,
   cursorLeft: `${ESC}G`,
 };

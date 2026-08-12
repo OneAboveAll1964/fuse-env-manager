@@ -52,12 +52,22 @@ function listen(handler: (key: Key) => void): () => void {
   };
 }
 
-function clear(lines: number): void {
-  for (let i = 0; i < lines; i += 1) {
-    stdout.write(ansi.clearLine);
-    stdout.write(ansi.cursorLeft);
-    if (i < lines - 1) stdout.write(ansi.cursorUp(1));
-  }
+function clearBlock(rows: number): void {
+  if (rows <= 0) return;
+  if (rows > 1) stdout.write(ansi.cursorUp(rows - 1));
+  stdout.write(ansi.cursorLeft);
+  stdout.write(ansi.clearDown);
+}
+
+function rowsFor(lines: string[]): number {
+  const columns = stdout.columns && stdout.columns > 0 ? stdout.columns : 80;
+  return lines.reduce((sum, line) => sum + Math.max(1, Math.ceil(width(line) / columns)), 0);
+}
+
+function paint(lines: string[], previousRows: number): number {
+  clearBlock(previousRows);
+  stdout.write(lines.join('\n'));
+  return rowsFor(lines);
 }
 
 const MAX_VISIBLE = 12;
@@ -131,17 +141,13 @@ export function select<T>(
       }
       lines.push(c.grey('  ↑↓ move · enter select · esc cancel'));
 
-      if (painted > 0) clear(painted);
-      stdout.write(`${lines.join('\n')}\n`);
-      painted = lines.reduce(
-        (sum, line) => sum + Math.max(1, Math.ceil(width(line) / (stdout.columns || 80))),
-        0,
-      );
+      painted = paint(lines, painted);
     };
 
     const finish = (value: T | null, error?: Error): void => {
       stop();
-      clear(painted);
+      clearBlock(painted);
+      painted = 0;
       stdout.write(ansi.showCursor);
       if (error) {
         reject(error);
@@ -251,15 +257,14 @@ export function multiselect<T>(
       }
       lines.push(c.grey('  ↑↓ move · space toggle · a all · enter confirm · esc cancel'));
 
-      if (painted > 0) clear(painted);
-      stdout.write(`${lines.join('\n')}\n`);
-      painted = lines.length;
+      painted = paint(lines, painted);
     };
 
     const stop = listen((key) => {
       if ((key.ctrl && key.name === 'c') || key.name === 'escape') {
         stop();
-        clear(painted);
+        clearBlock(painted);
+        painted = 0;
         stdout.write(ansi.showCursor);
         reject(new PromptCancelled());
         return;
@@ -291,7 +296,8 @@ export function multiselect<T>(
       }
       if (key.name === 'return' || key.name === 'enter') {
         stop();
-        clear(painted);
+        clearBlock(painted);
+        painted = 0;
         stdout.write(ansi.showCursor);
         stdout.write(
           `${c.green(symbols.tick)} ${c.bold(message)} ${c.grey(symbols.arrow)} ${c.brightCyan(`${picked.size} selected`)}\n`,
