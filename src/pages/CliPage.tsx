@@ -29,14 +29,20 @@ import { useVault } from '@/lib/vault';
 
 const COMMANDS: Array<{ command: string; summary: string }> = [
   { command: 'fuse', summary: 'Interactive menu for everything below' },
-  { command: 'fuse status', summary: 'Vault state, bridge state and what this folder is linked to' },
+  {
+    command: 'fuse status',
+    summary: 'Vault state, bridge state and what this folder is linked to',
+  },
   { command: 'fuse unlock [--ttl 15m]', summary: 'Cache an unlocked session for this terminal' },
   { command: 'fuse lock', summary: 'Drop the cached session right away' },
   { command: 'fuse pull [path]', summary: 'Pick a file in the vault and write it here' },
   { command: 'fuse put', summary: 'Quick pull of a single file into the current folder' },
   { command: 'fuse push [file]', summary: 'Send a local env file into the vault' },
   { command: 'fuse sync', summary: 'Compare the local file with the vault and reconcile' },
-  { command: 'fuse link / unlink', summary: 'Tie this folder to a project so pulls are one keypress' },
+  {
+    command: 'fuse link / unlink',
+    summary: 'Tie this folder to a project so pulls are one keypress',
+  },
   { command: 'fuse ls [path]', summary: 'List workspaces, projects, folders and files' },
   { command: 'fuse get KEY', summary: 'Print one value' },
   { command: 'fuse set KEY=VALUE', summary: 'Set one or more variables' },
@@ -63,9 +69,11 @@ export function CliPage(): JSX.Element {
     path: string | null;
     bundled: string | null;
   }>({ installed: false, path: null, bundled: null });
-  const [bridge, setBridge] = useState<{ running: boolean; port: number | null; tokenPath: string }>(
-    { running: false, port: null, tokenPath: '' },
-  );
+  const [bridge, setBridge] = useState<{
+    running: boolean;
+    port: number | null;
+    tokenPath: string;
+  }>({ running: false, port: null, tokenPath: '' });
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<CliInstallResult | null>(null);
 
@@ -131,7 +139,12 @@ export function CliPage(): JSX.Element {
         description="Pull and push env files straight from any project folder, on macOS and Windows."
         actions={
           cliStatus.installed ? (
-            <Button variant="outline" iconLeft={<Trash2 size={15} />} loading={busy} onClick={() => void uninstall()}>
+            <Button
+              variant="outline"
+              iconLeft={<Trash2 size={15} />}
+              loading={busy}
+              onClick={() => void uninstall()}
+            >
               Remove from PATH
             </Button>
           ) : (
@@ -189,10 +202,7 @@ export function CliPage(): JSX.Element {
         <Card title="Live bridge" description="Lets the CLI use the app's unlocked session.">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Radio
-                size={15}
-                className={bridge.running ? 'text-emerald-500' : 'text-slate-300'}
-              />
+              <Radio size={15} className={bridge.running ? 'text-emerald-500' : 'text-slate-300'} />
               <span className="text-[13px] font-medium text-slate-800 dark:text-slate-100">
                 {bridge.running ? 'Running' : 'Stopped'}
               </span>
@@ -218,7 +228,9 @@ export function CliPage(): JSX.Element {
             <div className="text-slate-600 dark:text-slate-300">Vault folder</div>
             <div className="mono-value break-all text-[11px] text-slate-500">{status.vaultDir}</div>
             <div className="pt-2 text-slate-600 dark:text-slate-300">Override with</div>
-            <div className="mono-value text-[11px] text-slate-500">FUSE_HOME=/some/other/folder</div>
+            <div className="mono-value text-[11px] text-slate-500">
+              FUSE_HOME=/some/other/folder
+            </div>
           </div>
         </Card>
       </div>

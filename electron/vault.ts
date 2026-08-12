@@ -3,11 +3,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs';
 import path from 'node:path';
 import { DEFAULT_SETTINGS, VAULT_VERSION, emptyVault } from '../shared/defaults';
-import {
-  backupPath,
-  defaultVaultDir,
-  vaultPath as vaultFilePath,
-} from '../shared/paths';
+import { backupPath, defaultVaultDir, vaultPath as vaultFilePath } from '../shared/paths';
 import {
   VaultError,
   createVault,

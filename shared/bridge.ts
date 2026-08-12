@@ -156,7 +156,11 @@ export type FuseBridge = {
     create(input: ProjectInput): Promise<{ data: VaultData; project: Project }>;
     update(id: Id, patch: Partial<Project>): Promise<VaultData>;
     remove(id: Id): Promise<VaultData>;
-    duplicate(id: Id, name: string, workspaceId: Id): Promise<{ data: VaultData; project: Project }>;
+    duplicate(
+      id: Id,
+      name: string,
+      workspaceId: Id,
+    ): Promise<{ data: VaultData; project: Project }>;
     move(id: Id, workspaceId: Id): Promise<VaultData>;
     linkPath(id: Id, path: string): Promise<VaultData>;
     unlinkPath(id: Id, path: string): Promise<VaultData>;

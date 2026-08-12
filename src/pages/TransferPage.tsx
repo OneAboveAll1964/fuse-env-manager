@@ -69,7 +69,11 @@ export function TransferPage(): JSX.Element {
       };
     }
     if (scope === 'file') {
-      return { projects: 1, files: fileId ? 1 : 0, vars: data.vars.filter((v) => v.fileId === fileId).length };
+      return {
+        projects: 1,
+        files: fileId ? 1 : 0,
+        vars: data.vars.filter((v) => v.fileId === fileId).length,
+      };
     }
     const ids = new Set(
       scope === 'workspace'

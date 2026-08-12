@@ -5,15 +5,38 @@ import { FORMATS, FORMAT_LABELS } from '@shared/env-types';
 import { filePath, folderPath, varsOf } from '@shared/tree';
 import type { EnvFile, EnvFormat, ImportMode, VaultData } from '@shared/types';
 import { connect } from '../core/client';
-import { upsertVars, createFile, createFolder, createProject, createWorkspace } from '../core/mutations';
+import {
+  upsertVars,
+  createFile,
+  createFolder,
+  createProject,
+  createWorkspace,
+} from '../core/mutations';
 import { projectForDirectory, readLink, resolveLinkedFile, writeLink } from '../core/link';
 import { findFile, findFiles, pickFileGuided, pickWorkspace } from '../core/resolve';
 import { c, symbols } from '../ui/colors';
-import { box, diffLine, failure, heading, info, keyValue, print, success, table, warn } from '../ui/output';
+import {
+  box,
+  diffLine,
+  failure,
+  heading,
+  info,
+  keyValue,
+  print,
+  success,
+  table,
+  warn,
+} from '../ui/output';
 import { confirm, isInteractive, select, text, type Choice } from '../ui/prompt';
 import { flagBool, flagString, type ParsedArgs } from '../core/args';
 
-const ENV_CANDIDATES = ['.env', '.env.local', '.env.development', '.env.production', '.env.staging'];
+const ENV_CANDIDATES = [
+  '.env',
+  '.env.local',
+  '.env.development',
+  '.env.production',
+  '.env.staging',
+];
 
 function renderFile(data: VaultData, file: EnvFile, format: EnvFormat): string {
   return serialize(
@@ -70,7 +93,10 @@ async function resolveTargetFile(
     if (fileId) {
       const file = data.files.find((f) => f.id === fileId);
       if (file) {
-        info(`Using the link in ${c.bold(path.relative(cwd, linked.dir) || '.')}`, filePath(data, file.id));
+        info(
+          `Using the link in ${c.bold(path.relative(cwd, linked.dir) || '.')}`,
+          filePath(data, file.id),
+        );
         return file;
       }
     }
@@ -169,7 +195,11 @@ export async function pull(args: ParsedArgs): Promise<number> {
         [
           { value: 'overwrite', label: 'Overwrite it', hint: 'replace the whole file' },
           { value: 'merge', label: 'Merge', hint: 'keep local keys that the vault does not have' },
-          { value: 'backup', label: 'Overwrite and keep a backup', hint: `${path.basename(target)}.bak` },
+          {
+            value: 'backup',
+            label: 'Overwrite and keep a backup',
+            hint: `${path.basename(target)}.bak`,
+          },
           { value: 'cancel', label: 'Cancel', hint: 'change nothing' },
         ],
       );
@@ -188,7 +218,10 @@ export async function pull(args: ParsedArgs): Promise<number> {
           serialize(
             merged.map((e) => ({ ...e, secret: false })),
             format,
-            { quoteMode: data.settings.quoteMode, header: `Merged from Fuse: ${filePath(data, file.id)}` },
+            {
+              quoteMode: data.settings.quoteMode,
+              header: `Merged from Fuse: ${filePath(data, file.id)}`,
+            },
           ),
           'utf8',
         );
@@ -203,7 +236,9 @@ export async function pull(args: ParsedArgs): Promise<number> {
 
   if (flagBool(args, 'link')) {
     const project = data.projects.find((p) => p.id === file.projectId);
-    const workspace = project ? data.workspaces.find((w) => w.id === project.workspaceId) : undefined;
+    const workspace = project
+      ? data.workspaces.find((w) => w.id === project.workspaceId)
+      : undefined;
     writeLink(cwd, {
       version: 1,
       workspace: workspace?.name,
@@ -257,16 +292,21 @@ export async function push(args: ParsedArgs): Promise<number> {
       failure('No env file was found here. Pass one: fuse push .env');
       return 1;
     }
-    source = candidates.length === 1 || !isInteractive()
-      ? candidates[0]
-      : await select<string>(
-          'Which local file do you want to send?',
-          candidates.map<Choice<string>>((name) => ({
-            value: name,
-            label: name,
-            hint: `${readFileSync(path.join(cwd, name), 'utf8').split('\n').filter((l) => l.trim() && !l.trim().startsWith('#')).length} lines`,
-          })),
-        );
+    source =
+      candidates.length === 1 || !isInteractive()
+        ? candidates[0]
+        : await select<string>(
+            'Which local file do you want to send?',
+            candidates.map<Choice<string>>((name) => ({
+              value: name,
+              label: name,
+              hint: `${
+                readFileSync(path.join(cwd, name), 'utf8')
+                  .split('\n')
+                  .filter((l) => l.trim() && !l.trim().startsWith('#')).length
+              } lines`,
+            })),
+          );
   }
 
   const sourcePath = path.isAbsolute(source) ? source : path.join(cwd, source);
@@ -276,7 +316,9 @@ export async function push(args: ParsedArgs): Promise<number> {
   }
 
   const raw = readFileSync(sourcePath, 'utf8');
-  const format = (flagString(args, 'format') as EnvFormat | undefined) ?? detectFormat(path.basename(sourcePath), raw);
+  const format =
+    (flagString(args, 'format') as EnvFormat | undefined) ??
+    detectFormat(path.basename(sourcePath), raw);
   const parsed = parseText(raw, format);
 
   if (parsed.entries.length === 0) {
@@ -350,7 +392,8 @@ export async function push(args: ParsedArgs): Promise<number> {
       { value: '__new__', label: c.green('+ new folder') },
     ]);
 
-    let folderId: string | null = folderChoice === '__root__' || folderChoice === '__new__' ? null : folderChoice;
+    let folderId: string | null =
+      folderChoice === '__root__' || folderChoice === '__new__' ? null : folderChoice;
     if (folderChoice === '__new__') {
       const name = await text('Name the folder', { initial: 'development' });
       const projectId = project.id;
@@ -400,10 +443,15 @@ export async function push(args: ParsedArgs): Promise<number> {
   let mode: ImportMode = (flagString(args, 'mode') as ImportMode | undefined) ?? 'merge';
   if (conflicts.length > 0 && !flagBool(args, 'yes', 'y')) {
     print();
-    warn(`${conflicts.length} keys already exist in ${filePath(data, destination.id)} with a different value`);
+    warn(
+      `${conflicts.length} keys already exist in ${filePath(data, destination.id)} with a different value`,
+    );
     conflicts.slice(0, 8).forEach((entry) => {
       const current = existingVars.find((v) => v.key === entry.key);
-      diffLine('~', `${entry.key}: ${current?.secret ? '••••' : current?.value} ${symbols.arrow} ${entry.value}`);
+      diffLine(
+        '~',
+        `${entry.key}: ${current?.secret ? '••••' : current?.value} ${symbols.arrow} ${entry.value}`,
+      );
     });
     if (conflicts.length > 8) print(`  ${c.grey(`and ${conflicts.length - 8} more`)}`);
     print();
@@ -415,7 +463,11 @@ export async function push(args: ParsedArgs): Promise<number> {
     mode = await select<ImportMode>('What should happen to those keys?', [
       { value: 'merge', label: 'Overwrite them', hint: 'the local file wins' },
       { value: 'skip', label: 'Keep what is in the vault', hint: 'only add new keys' },
-      { value: 'replace', label: 'Replace the whole file', hint: 'remove keys not in the local file' },
+      {
+        value: 'replace',
+        label: 'Replace the whole file',
+        hint: 'remove keys not in the local file',
+      },
     ]);
   }
 
@@ -504,11 +556,21 @@ export async function sync(args: ParsedArgs): Promise<number> {
       ...onlyLocal.map((key) => [c.green('local only'), key, localMap.get(key) ?? '', c.grey('—')]),
       ...onlyRemote.map((key) => {
         const variable = remote.find((v) => v.key === key);
-        return [c.blue('vault only'), key, c.grey('—'), variable?.secret ? '••••' : (variable?.value ?? '')];
+        return [
+          c.blue('vault only'),
+          key,
+          c.grey('—'),
+          variable?.secret ? '••••' : (variable?.value ?? ''),
+        ];
       }),
       ...differ.map((key) => {
         const variable = remote.find((v) => v.key === key);
-        return [c.yellow('differs'), key, localMap.get(key) ?? '', variable?.secret ? '••••' : (variable?.value ?? '')];
+        return [
+          c.yellow('differs'),
+          key,
+          localMap.get(key) ?? '',
+          variable?.secret ? '••••' : (variable?.value ?? ''),
+        ];
       }),
     ],
     [12, 32, 30, 30],

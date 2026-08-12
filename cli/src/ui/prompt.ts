@@ -25,7 +25,9 @@ export function isInteractive(): boolean {
 
 function requireInteractive(): void {
   if (!isInteractive()) {
-    throw new Error('This command needs an interactive terminal. Pass the values as flags instead.');
+    throw new Error(
+      'This command needs an interactive terminal. Pass the values as flags instead.',
+    );
   }
 }
 
@@ -121,13 +123,20 @@ export function select<T>(
 
       if (list.length === 0) lines.push(`  ${c.grey('nothing matched')}`);
       if (list.length > MAX_VISIBLE) {
-        lines.push(c.grey(`  ${offset + 1}-${Math.min(offset + MAX_VISIBLE, list.length)} of ${list.length}`));
+        lines.push(
+          c.grey(
+            `  ${offset + 1}-${Math.min(offset + MAX_VISIBLE, list.length)} of ${list.length}`,
+          ),
+        );
       }
       lines.push(c.grey('  ↑↓ move · enter select · esc cancel'));
 
       if (painted > 0) clear(painted);
       stdout.write(`${lines.join('\n')}\n`);
-      painted = lines.reduce((sum, line) => sum + Math.max(1, Math.ceil(width(line) / (stdout.columns || 80))), 0);
+      painted = lines.reduce(
+        (sum, line) => sum + Math.max(1, Math.ceil(width(line) / (stdout.columns || 80))),
+        0,
+      );
     };
 
     const finish = (value: T | null, error?: Error): void => {
@@ -185,7 +194,13 @@ export function select<T>(
         default:
           break;
       }
-      if (filterable && key.sequence && key.sequence.length === 1 && !key.ctrl && key.sequence >= ' ') {
+      if (
+        filterable &&
+        key.sequence &&
+        key.sequence.length === 1 &&
+        !key.ctrl &&
+        key.sequence >= ' '
+      ) {
         filter += key.sequence;
         cursor = 0;
         offset = 0;
@@ -229,7 +244,9 @@ export function multiselect<T>(
       });
       if (choices.length > MAX_VISIBLE) {
         lines.push(
-          c.grey(`  ${offset + 1}-${Math.min(offset + MAX_VISIBLE, choices.length)} of ${choices.length}`),
+          c.grey(
+            `  ${offset + 1}-${Math.min(offset + MAX_VISIBLE, choices.length)} of ${choices.length}`,
+          ),
         );
       }
       lines.push(c.grey('  ↑↓ move · space toggle · a all · enter confirm · esc cancel'));
@@ -290,12 +307,20 @@ export function multiselect<T>(
 
 export function text(
   message: string,
-  options: { initial?: string; placeholder?: string; validate?: (value: string) => string | null } = {},
+  options: {
+    initial?: string;
+    placeholder?: string;
+    validate?: (value: string) => string | null;
+  } = {},
 ): Promise<string> {
   requireInteractive();
   return new Promise<string>((resolve, reject) => {
     const rl = readline.createInterface({ input: stdin, output: stdout });
-    const suffix = options.initial ? c.grey(` (${options.initial})`) : options.placeholder ? c.grey(` (${options.placeholder})`) : '';
+    const suffix = options.initial
+      ? c.grey(` (${options.initial})`)
+      : options.placeholder
+        ? c.grey(` (${options.placeholder})`)
+        : '';
     const ask = (): void => {
       rl.question(`${c.brightBlue('?')} ${c.bold(message)}${suffix} `, (answer) => {
         const value = answer.trim() || options.initial || '';
@@ -382,7 +407,8 @@ export function renderTree(lines: Array<{ depth: number; label: string; last: bo
   return lines
     .map((line) => {
       const indent = '  '.repeat(Math.max(0, line.depth - 1));
-      const branch = line.depth === 0 ? '' : line.last ? `${symbols.lastBranch} ` : `${symbols.branch} `;
+      const branch =
+        line.depth === 0 ? '' : line.last ? `${symbols.lastBranch} ` : `${symbols.branch} `;
       return `  ${indent}${c.grey(branch)}${line.label}`;
     })
     .join('\n');

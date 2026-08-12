@@ -13,7 +13,11 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
         example: 'fuse pull --file "Acme/Storefront API/production/.env"',
       },
       { command: 'put', summary: 'Same as pull, kept as a shorthand' },
-      { command: 'push [file]', summary: 'Send a local env file into the vault', example: 'fuse push .env' },
+      {
+        command: 'push [file]',
+        summary: 'Send a local env file into the vault',
+        example: 'fuse push .env',
+      },
       { command: 'sync', summary: 'Compare this folder with the vault and pick a direction' },
       { command: 'link', summary: 'Tie this folder to a file so pulls stop asking' },
       { command: 'unlink', summary: 'Remove the link from this folder' },
@@ -47,9 +51,16 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
   {
     title: 'Run and generate',
     entries: [
-      { command: 'run -- <command>', summary: 'Run a command with the variables injected', example: 'fuse run -- npm start' },
+      {
+        command: 'run -- <command>',
+        summary: 'Run a command with the variables injected',
+        example: 'fuse run -- npm start',
+      },
       { command: 'export --format shell', summary: 'Print the file in any supported format' },
-      { command: 'gen <kind>', summary: 'Generate a password, hex, base64, uuid, jwt-secret, api-key or pin' },
+      {
+        command: 'gen <kind>',
+        summary: 'Generate a password, hex, base64, uuid, jwt-secret, api-key or pin',
+      },
     ],
   },
   {
@@ -67,7 +78,10 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
       { command: 'unlock --ttl 15m', summary: 'Cache an unlocked session for this machine' },
       { command: 'lock', summary: 'Drop the cached session' },
       { command: 'doctor', summary: 'Check the install, the vault and the bridge' },
-      { command: 'completion <shell>', summary: 'Print a completion script for bash, zsh, fish or powershell' },
+      {
+        command: 'completion <shell>',
+        summary: 'Print a completion script for bash, zsh, fish or powershell',
+      },
     ],
   },
 ];
@@ -90,7 +104,9 @@ const ENV_VARS: Entry[] = [
 
 export function help(): number {
   print();
-  print(`  ${c.bold(c.brightBlue('fuse'))} ${c.grey('— encrypted environment variables, everywhere you work')}`);
+  print(
+    `  ${c.bold(c.brightBlue('fuse'))} ${c.grey('— encrypted environment variables, everywhere you work')}`,
+  );
   print();
   print(`  ${c.bold('Usage')}  ${c.grey('fuse <command> [options]')}`);
   print(`         ${c.grey('fuse            open the interactive menu')}`);
@@ -101,22 +117,29 @@ export function help(): number {
     print(`  ${c.bold(group.title)}`);
     for (const entry of group.entries) {
       print(`    ${c.brightBlue(pad(entry.command, width))}${c.grey(entry.summary)}`);
-      if (entry.example) print(`    ${' '.repeat(width)}${c.grey(`${symbols.arrow} ${entry.example}`)}`);
+      if (entry.example)
+        print(`    ${' '.repeat(width)}${c.grey(`${symbols.arrow} ${entry.example}`)}`);
     }
     print();
   }
 
   print(`  ${c.bold('Common options')}`);
-  FLAGS.forEach((entry) => print(`    ${c.yellow(pad(entry.command, width))}${c.grey(entry.summary)}`));
+  FLAGS.forEach((entry) =>
+    print(`    ${c.yellow(pad(entry.command, width))}${c.grey(entry.summary)}`),
+  );
   print();
 
   print(`  ${c.bold('Environment')}`);
-  ENV_VARS.forEach((entry) => print(`    ${c.magenta(pad(entry.command, width))}${c.grey(entry.summary)}`));
+  ENV_VARS.forEach((entry) =>
+    print(`    ${c.magenta(pad(entry.command, width))}${c.grey(entry.summary)}`),
+  );
   print();
   return 0;
 }
 
-const COMMANDS = GROUPS.flatMap((group) => group.entries.map((entry) => entry.command.split(' ')[0]));
+const COMMANDS = GROUPS.flatMap((group) =>
+  group.entries.map((entry) => entry.command.split(' ')[0]),
+);
 
 export function completion(shell: string): number {
   const list = COMMANDS.join(' ');
@@ -146,7 +169,9 @@ compdef _fuse fuse`);
 complete -F _fuse_completions fuse`);
       return 0;
     case 'fish':
-      print(COMMANDS.map((cmd) => `complete -c fuse -n "__fish_use_subcommand" -a "${cmd}"`).join('\n'));
+      print(
+        COMMANDS.map((cmd) => `complete -c fuse -n "__fish_use_subcommand" -a "${cmd}"`).join('\n'),
+      );
       return 0;
     case 'powershell':
     case 'pwsh':

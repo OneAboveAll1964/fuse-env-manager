@@ -1,14 +1,6 @@
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
-import {
-  ChevronRight,
-  FileCode2,
-  Folder,
-  FolderOpen,
-  KeyRound,
-  Plus,
-  Search,
-} from 'lucide-react';
+import { ChevronRight, FileCode2, Folder, FolderOpen, KeyRound, Plus, Search } from 'lucide-react';
 import type { TreeNode } from '@shared/types';
 import { Input, Menu } from '@/components/ui';
 import { TONE_CLASSES } from '@/lib/format';
@@ -94,8 +86,7 @@ export function EnvTree({
               key: 'new-folder',
               label: 'New folder',
               icon: <Folder size={14} />,
-              onSelect: () =>
-                onAction({ kind: 'new-folder', projectId: node.id, parentId: null }),
+              onSelect: () => onAction({ kind: 'new-folder', projectId: node.id, parentId: null }),
             },
             {
               key: 'new-file',
@@ -103,7 +94,11 @@ export function EnvTree({
               icon: <FileCode2 size={14} />,
               onSelect: () => onAction({ kind: 'new-file', projectId: node.id, folderId: null }),
             },
-            { key: 'edit', label: 'Edit project', onSelect: () => onAction({ kind: 'edit', node }) },
+            {
+              key: 'edit',
+              label: 'Edit project',
+              onSelect: () => onAction({ kind: 'edit', node }),
+            },
             {
               key: 'duplicate',
               label: 'Duplicate',
@@ -251,9 +246,7 @@ export function EnvTree({
                 {node.varCount}
               </span>
             )}
-            {node.secretCount > 0 && (
-              <KeyRound size={10} className="shrink-0 text-amber-500" />
-            )}
+            {node.secretCount > 0 && <KeyRound size={10} className="shrink-0 text-amber-500" />}
           </button>
           <Menu
             items={menuItems}

@@ -52,7 +52,10 @@ export function table(headers: string[], rows: string[][], maxWidths?: number[])
   if (rows.length === 0) return;
   const columns = headers.length;
   const widths = headers.map((header, index) => {
-    const longest = rows.reduce((max, row) => Math.max(max, width(row[index] ?? '')), width(header));
+    const longest = rows.reduce(
+      (max, row) => Math.max(max, width(row[index] ?? '')),
+      width(header),
+    );
     const cap = maxWidths?.[index] ?? 60;
     return Math.min(longest, cap);
   });

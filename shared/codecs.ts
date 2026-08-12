@@ -237,9 +237,18 @@ function parseDotenv(text: string): ParseResult {
   return { entries, errors };
 }
 
+function scalarToString(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  return JSON.stringify(value) ?? '';
+}
+
 function flattenJson(value: unknown, prefix: string, out: ParsedEntry[]): void {
   if (value === null || typeof value !== 'object') {
-    out.push({ key: prefix, value: value === null ? '' : String(value), note: '', enabled: true });
+    out.push({ key: prefix, value: scalarToString(value), note: '', enabled: true });
     return;
   }
   if (Array.isArray(value)) {
@@ -253,7 +262,7 @@ function flattenJson(value: unknown, prefix: string, out: ParsedEntry[]): void {
     } else if (Array.isArray(v)) {
       out.push({ key, value: JSON.stringify(v), note: '', enabled: true });
     } else {
-      out.push({ key, value: v === null ? '' : String(v), note: '', enabled: true });
+      out.push({ key, value: scalarToString(v), note: '', enabled: true });
     }
   }
 }
@@ -493,7 +502,12 @@ function parseXcconfig(text: string): ParseResult {
     if (trimmed.startsWith('#include')) continue;
     const match = /^([A-Za-z_][A-Za-z0-9_]*)(?:\[[^\]]*\])?\s*=\s*(.*)$/.exec(trimmed);
     if (!match) continue;
-    entries.push({ key: match[1], value: (match[2] ?? '').trim(), note: pendingNote, enabled: true });
+    entries.push({
+      key: match[1],
+      value: (match[2] ?? '').trim(),
+      note: pendingNote,
+      enabled: true,
+    });
     pendingNote = '';
   }
 
@@ -535,7 +549,9 @@ function splitCsvLine(line: string): string[] {
 }
 
 function parseCsv(text: string): ParseResult {
-  const lines = normaliseNewlines(text).split('\n').filter((l) => l.trim());
+  const lines = normaliseNewlines(text)
+    .split('\n')
+    .filter((l) => l.trim());
   if (lines.length === 0) return { entries: [], errors: ['The file is empty'] };
 
   const header = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
@@ -634,9 +650,7 @@ export function serialize(
       const out = headerLines(options, '#');
       for (const e of list) {
         if (options.includeNotes && e.note) out.push(`# ${e.note}`);
-        const value = e.value.includes('\n')
-          ? `"""\n${e.value}"""`
-          : `"${escapeDouble(e.value)}"`;
+        const value = e.value.includes('\n') ? `"""\n${e.value}"""` : `"${escapeDouble(e.value)}"`;
         const line = `${e.key} = ${value}`;
         out.push(e.enabled ? line : `# ${line}`);
       }
@@ -687,7 +701,9 @@ export function serialize(
       const cell = (v: string): string => `"${v.replace(/"/g, '""')}"`;
       const out = ['key,value,note,enabled'];
       for (const e of list) {
-        out.push([cell(e.key), cell(e.value), cell(e.note), e.enabled ? 'true' : 'false'].join(','));
+        out.push(
+          [cell(e.key), cell(e.value), cell(e.note), e.enabled ? 'true' : 'false'].join(','),
+        );
       }
       return `${out.join('\n')}\n`;
     }

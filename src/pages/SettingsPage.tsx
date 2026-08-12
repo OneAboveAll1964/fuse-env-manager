@@ -63,7 +63,8 @@ export function SettingsPage(): JSX.Element {
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(data.settings);
 
-  const patch = (values: Partial<AppSettings>): void => setDraft((prev) => ({ ...prev, ...values }));
+  const patch = (values: Partial<AppSettings>): void =>
+    setDraft((prev) => ({ ...prev, ...values }));
 
   const save = async (): Promise<void> => {
     setSaving(true);
@@ -172,7 +173,10 @@ export function SettingsPage(): JSX.Element {
 
       {section === 'security' && (
         <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
-          <Card title="Master password" description="The root of trust for everything in the vault.">
+          <Card
+            title="Master password"
+            description="The root of trust for everything in the vault."
+          >
             <div className="space-y-4">
               <div className="flex items-start gap-2.5 rounded-xl border border-slate-200 px-3.5 py-3 dark:border-slate-800">
                 <ShieldCheck size={16} className="mt-0.5 shrink-0 text-emerald-500" />
@@ -186,7 +190,11 @@ export function SettingsPage(): JSX.Element {
                   Current hint: <span className="font-medium">{status.hint}</span>
                 </div>
               )}
-              <Button variant="outline" iconLeft={<KeyRound size={15} />} onClick={() => setPasswordOpen(true)}>
+              <Button
+                variant="outline"
+                iconLeft={<KeyRound size={15} />}
+                onClick={() => setPasswordOpen(true)}
+              >
                 Change master password
               </Button>
             </div>
@@ -206,11 +214,19 @@ export function SettingsPage(): JSX.Element {
               </div>
               {status.encryptionAvailable &&
                 (status.deviceKey ? (
-                  <Button variant="outline" iconLeft={<Trash2 size={15} />} onClick={() => void forgetDevice()}>
+                  <Button
+                    variant="outline"
+                    iconLeft={<Trash2 size={15} />}
+                    onClick={() => void forgetDevice()}
+                  >
                     Forget this device
                   </Button>
                 ) : (
-                  <Button variant="outline" iconLeft={<Fingerprint size={15} />} onClick={() => void rememberDevice()}>
+                  <Button
+                    variant="outline"
+                    iconLeft={<Fingerprint size={15} />}
+                    onClick={() => void rememberDevice()}
+                  >
                     Remember this device
                   </Button>
                 ))}
@@ -412,7 +428,10 @@ export function SettingsPage(): JSX.Element {
 
       {section === 'history' && (
         <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
-          <Card title="Change history" description="Fuse keeps the previous value of everything you edit.">
+          <Card
+            title="Change history"
+            description="Fuse keeps the previous value of everything you edit."
+          >
             <div className="space-y-4">
               <Switch
                 checked={draft.historyEnabled}
@@ -581,7 +600,9 @@ export function SettingsPage(): JSX.Element {
             label="Confirm new password"
             value={confirmNext}
             leading={<Lock size={15} />}
-            error={confirmNext && confirmNext !== next ? 'The two passwords do not match' : undefined}
+            error={
+              confirmNext && confirmNext !== next ? 'The two passwords do not match' : undefined
+            }
             onChange={(e) => setConfirmNext(e.target.value)}
           />
           <Input

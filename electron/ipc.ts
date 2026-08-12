@@ -1,12 +1,4 @@
-import {
-  BrowserWindow,
-  app,
-  clipboard,
-  dialog,
-  ipcMain,
-  powerMonitor,
-  shell,
-} from 'electron';
+import { BrowserWindow, app, clipboard, dialog, ipcMain, powerMonitor, shell } from 'electron';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { generateSecret } from '../shared/vault-crypto';
@@ -14,15 +6,30 @@ import { emptyVault } from '../shared/defaults';
 import { LINK_FILE } from '../shared/paths';
 import type {
   AppSettings,
+  EnvFile,
+  EnvFolder,
   EnvFormat,
+  EnvVar,
   ExportOptions,
   GeneratedSecretKind,
   Id,
   ImportMode,
   LinkedPathInfo,
+  Project,
   VaultStatus,
+  Workspace,
 } from '../shared/types';
-import type { PickedFile, RenderOptions, UnlockResult } from '../shared/bridge';
+import type {
+  BulkVarInput,
+  FileInput,
+  FolderInput,
+  PickedFile,
+  ProjectInput,
+  RenderOptions,
+  UnlockResult,
+  VarInput,
+  WorkspaceInput,
+} from '../shared/bridge';
 import * as ops from './operations';
 import * as archive from './archive';
 import { bridgeInfo, setBridgeChangeHandler, startBridge, stopBridge } from './bridge-server';
@@ -245,36 +252,46 @@ export function registerIpc(resolveWindow: () => BrowserWindow | null): void {
     return data;
   });
 
-  ipcMain.handle('workspaces:create', (_e, input) => ops.createWorkspace(input));
-  ipcMain.handle('workspaces:update', (_e, id: Id, patch) => ops.updateWorkspace(id, patch));
+  ipcMain.handle('workspaces:create', (_e, input: WorkspaceInput) => ops.createWorkspace(input));
+  ipcMain.handle('workspaces:update', (_e, id: Id, patch: Partial<Workspace>) =>
+    ops.updateWorkspace(id, patch),
+  );
   ipcMain.handle('workspaces:remove', (_e, id: Id) => ops.removeWorkspace(id));
   ipcMain.handle('workspaces:duplicate', (_e, id: Id, name: string) =>
     ops.duplicateWorkspace(id, name),
   );
   ipcMain.handle('workspaces:reorder', (_e, ids: Id[]) => ops.reorderWorkspaces(ids));
 
-  ipcMain.handle('projects:create', (_e, input) => ops.createProject(input));
-  ipcMain.handle('projects:update', (_e, id: Id, patch) => ops.updateProject(id, patch));
+  ipcMain.handle('projects:create', (_e, input: ProjectInput) => ops.createProject(input));
+  ipcMain.handle('projects:update', (_e, id: Id, patch: Partial<Project>) =>
+    ops.updateProject(id, patch),
+  );
   ipcMain.handle('projects:remove', (_e, id: Id) => ops.removeProject(id));
   ipcMain.handle('projects:duplicate', (_e, id: Id, name: string, workspaceId: Id) =>
     ops.duplicateProject(id, name, workspaceId),
   );
-  ipcMain.handle('projects:move', (_e, id: Id, workspaceId: Id) => ops.moveProject(id, workspaceId));
+  ipcMain.handle('projects:move', (_e, id: Id, workspaceId: Id) =>
+    ops.moveProject(id, workspaceId),
+  );
   ipcMain.handle('projects:link', (_e, id: Id, target: string) => ops.linkProjectPath(id, target));
   ipcMain.handle('projects:unlink', (_e, id: Id, target: string) =>
     ops.unlinkProjectPath(id, target),
   );
 
-  ipcMain.handle('folders:create', (_e, input) => ops.createFolder(input));
-  ipcMain.handle('folders:update', (_e, id: Id, patch) => ops.updateFolder(id, patch));
+  ipcMain.handle('folders:create', (_e, input: FolderInput) => ops.createFolder(input));
+  ipcMain.handle('folders:update', (_e, id: Id, patch: Partial<EnvFolder>) =>
+    ops.updateFolder(id, patch),
+  );
   ipcMain.handle('folders:remove', (_e, id: Id) => ops.removeFolder(id));
   ipcMain.handle('folders:duplicate', (_e, id: Id, name: string) => ops.duplicateFolder(id, name));
   ipcMain.handle('folders:move', (_e, id: Id, projectId: Id, parentId: Id | null) =>
     ops.moveFolder(id, projectId, parentId),
   );
 
-  ipcMain.handle('files:create', (_e, input) => ops.createFile(input));
-  ipcMain.handle('files:update', (_e, id: Id, patch) => ops.updateFile(id, patch));
+  ipcMain.handle('files:create', (_e, input: FileInput) => ops.createFile(input));
+  ipcMain.handle('files:update', (_e, id: Id, patch: Partial<EnvFile>) =>
+    ops.updateFile(id, patch),
+  );
   ipcMain.handle('files:remove', (_e, id: Id) => ops.removeFile(id));
   ipcMain.handle('files:duplicate', (_e, id: Id, name: string) => ops.duplicateFile(id, name));
   ipcMain.handle('files:move', (_e, id: Id, projectId: Id, folderId: Id | null) =>
@@ -295,10 +312,10 @@ export function registerIpc(resolveWindow: () => BrowserWindow | null): void {
     },
   );
 
-  ipcMain.handle('vars:create', (_e, input) => ops.createVar(input));
-  ipcMain.handle('vars:update', (_e, id: Id, patch) => ops.updateVar(id, patch));
+  ipcMain.handle('vars:create', (_e, input: VarInput) => ops.createVar(input));
+  ipcMain.handle('vars:update', (_e, id: Id, patch: Partial<EnvVar>) => ops.updateVar(id, patch));
   ipcMain.handle('vars:remove', (_e, ids: Id[]) => ops.removeVars(ids));
-  ipcMain.handle('vars:bulk', (_e, input) => ops.bulkUpsertVars(input));
+  ipcMain.handle('vars:bulk', (_e, input: BulkVarInput) => ops.bulkUpsertVars(input));
   ipcMain.handle('vars:reorder', (_e, fileId: Id, ids: Id[]) => ops.reorderVars(fileId, ids));
   ipcMain.handle('vars:copy-to', (_e, ids: Id[], fileId: Id, mode: ImportMode) =>
     ops.copyVarsTo(ids, fileId, mode),

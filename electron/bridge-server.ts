@@ -14,7 +14,7 @@ import {
   unlockWithPassword,
 } from './vault';
 
-type Handler = (args: unknown[]) => Promise<unknown> | unknown;
+type Handler = (args: unknown[]) => unknown;
 
 let server: Server | null = null;
 let token = '';
@@ -81,7 +81,8 @@ const handlers: Record<string, Handler> = {
     else await unlockWithDeviceKey();
     return { locked: isLocked() };
   },
-  'search.run': (args) => searchVault(requireUnlocked(), arg<string>(args, 0), arg<number>(args, 1) ?? 100),
+  'search.run': (args) =>
+    searchVault(requireUnlocked(), arg<string>(args, 0), arg<number>(args, 1) ?? 100),
 
   'workspaces.create': (args) => ops.createWorkspace(arg(args, 0), 'cli'),
   'workspaces.update': (args) => ops.updateWorkspace(arg(args, 0), arg(args, 1)),
@@ -185,7 +186,13 @@ export function startBridge(appVersion: string): void {
     mkdirSync(defaultVaultDir(), { recursive: true });
     writeFileSync(
       bridgePath(),
-      JSON.stringify({ port, token, pid: process.pid, appVersion, startedAt: new Date().toISOString() }),
+      JSON.stringify({
+        port,
+        token,
+        pid: process.pid,
+        appVersion,
+        startedAt: new Date().toISOString(),
+      }),
       { mode: 0o600 },
     );
   });

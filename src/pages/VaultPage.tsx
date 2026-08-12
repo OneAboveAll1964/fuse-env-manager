@@ -134,9 +134,7 @@ export function VaultPage(): JSX.Element {
     async (format: EnvFormat, masked: boolean): Promise<void> => {
       if (!file) return;
       try {
-        setRendered(
-          await getBridge().files.render(file.id, { format, maskSecrets: masked }),
-        );
+        setRendered(await getBridge().files.render(file.id, { format, maskSecrets: masked }));
       } catch (err) {
         toast.error('Could not render this file', errorMessage(err));
       }
@@ -167,7 +165,10 @@ export function VaultPage(): JSX.Element {
     try {
       const text = await getBridge().files.render(file.id, { format: file.format });
       await getBridge().system.copySecret(text, data.settings.clipboardClearSeconds);
-      toast.success(`${file.name} copied`, `${pluralise(vars.length, 'variable')} in the clipboard.`);
+      toast.success(
+        `${file.name} copied`,
+        `${pluralise(vars.length, 'variable')} in the clipboard.`,
+      );
     } catch (err) {
       toast.error('Could not copy the file', errorMessage(err));
     }
@@ -266,13 +267,8 @@ export function VaultPage(): JSX.Element {
             setData((await bridge.workspaces.duplicate(action.node.id, name)).data);
           } else if (action.node.kind === 'project') {
             setData(
-              (
-                await bridge.projects.duplicate(
-                  action.node.id,
-                  name,
-                  action.node.workspaceId ?? '',
-                )
-              ).data,
+              (await bridge.projects.duplicate(action.node.id, name, action.node.workspaceId ?? ''))
+                .data,
             );
           } else if (action.node.kind === 'folder') {
             setData((await bridge.folders.duplicate(action.node.id, name)).data);
@@ -326,9 +322,12 @@ export function VaultPage(): JSX.Element {
           }));
         if (!ok) return;
         try {
-          if (action.node.kind === 'workspace') setData(await bridge.workspaces.remove(action.node.id));
-          else if (action.node.kind === 'project') setData(await bridge.projects.remove(action.node.id));
-          else if (action.node.kind === 'folder') setData(await bridge.folders.remove(action.node.id));
+          if (action.node.kind === 'workspace')
+            setData(await bridge.workspaces.remove(action.node.id));
+          else if (action.node.kind === 'project')
+            setData(await bridge.projects.remove(action.node.id));
+          else if (action.node.kind === 'folder')
+            setData(await bridge.folders.remove(action.node.id));
           else {
             setData(await bridge.files.remove(action.node.id));
             if (action.node.id === fileId) {
@@ -347,7 +346,7 @@ export function VaultPage(): JSX.Element {
     }
   };
 
-  const editingWorkspace = dialog.kind === 'workspace' ? workspaceById(dialog.id) ?? null : null;
+  const editingWorkspace = dialog.kind === 'workspace' ? (workspaceById(dialog.id) ?? null) : null;
   const editingProject: Project | null =
     dialog.kind === 'project' ? (projectById(dialog.id) ?? null) : null;
   const editingFolder: EnvFolder | null =

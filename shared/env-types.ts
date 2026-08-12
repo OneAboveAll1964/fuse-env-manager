@@ -165,7 +165,8 @@ const CONNECTION_PREFIXES = [
 const DURATION_RE = /^\d+(?:\.\d+)?\s*(?:ms|s|m|h|d|w|y|sec|secs|min|mins|hour|hours|day|days)$/i;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const COLOR_RE = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+const DATE_RE =
+  /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
 const BASE64_RE = /^[A-Za-z0-9+/]{16,}={0,2}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PATH_RE = /^(?:\.{1,2}\/|~\/|\/|[A-Za-z]:[\\/])[^\n]*$/;
@@ -264,8 +265,7 @@ export function validateValue(type: VarType, value: string, options: string[]): 
         : { ok: false, message: 'Expected base64 characters only' };
     case 'regex':
       try {
-        // eslint-disable-next-line no-new
-        new RegExp(value);
+        RegExp(value);
         return OK;
       } catch (err) {
         return { ok: false, message: err instanceof Error ? err.message : 'Invalid expression' };

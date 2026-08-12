@@ -49,10 +49,15 @@ export async function menu(args: ParsedArgs): Promise<number> {
       [
         'linked',
         link
-          ? c.brightBlue([link.link.project, link.link.folder, link.link.file].filter(Boolean).join(' / '))
+          ? c.brightBlue(
+              [link.link.project, link.link.folder, link.link.file].filter(Boolean).join(' / '),
+            )
           : c.grey('this folder is not linked'),
       ],
-      ['vault', `${data.projects.length} projects · ${data.files.length} files · ${data.vars.length} variables`],
+      [
+        'vault',
+        `${data.projects.length} projects · ${data.files.length} files · ${data.vars.length} variables`,
+      ],
       ['mode', client.mode === 'bridge' ? c.green('using the open app') : c.blue('direct')],
     ]);
     print();
@@ -65,10 +70,30 @@ export async function menu(args: ParsedArgs): Promise<number> {
     let action: Action;
     try {
       action = await select<Action>('What would you like to do?', [
-        { value: 'pull', label: 'Pull an env file into this folder', hint: 'fuse pull', group: 'Everyday' },
-        { value: 'push', label: 'Push a local env file into the vault', hint: 'fuse push', group: 'Everyday' },
-        { value: 'sync', label: 'Compare this folder with the vault', hint: 'fuse sync', group: 'Everyday' },
-        { value: 'link', label: 'Link this folder to a file', hint: 'fuse link', group: 'Everyday' },
+        {
+          value: 'pull',
+          label: 'Pull an env file into this folder',
+          hint: 'fuse pull',
+          group: 'Everyday',
+        },
+        {
+          value: 'push',
+          label: 'Push a local env file into the vault',
+          hint: 'fuse push',
+          group: 'Everyday',
+        },
+        {
+          value: 'sync',
+          label: 'Compare this folder with the vault',
+          hint: 'fuse sync',
+          group: 'Everyday',
+        },
+        {
+          value: 'link',
+          label: 'Link this folder to a file',
+          hint: 'fuse link',
+          group: 'Everyday',
+        },
         { value: 'ls', label: 'List a file and its variables', hint: 'fuse ls', group: 'Browse' },
         { value: 'tree', label: 'Show the whole vault', hint: 'fuse tree', group: 'Browse' },
         { value: 'search', label: 'Search variables', hint: 'fuse search', group: 'Browse' },
@@ -76,7 +101,12 @@ export async function menu(args: ParsedArgs): Promise<number> {
         { value: 'set', label: 'Set a variable', hint: 'fuse set KEY=VALUE', group: 'Edit' },
         { value: 'project', label: 'Manage projects', hint: 'fuse project', group: 'Edit' },
         { value: 'history', label: 'Show recent changes', hint: 'fuse history', group: 'History' },
-        { value: 'restore', label: 'Put back a previous state', hint: 'fuse restore', group: 'History' },
+        {
+          value: 'restore',
+          label: 'Put back a previous state',
+          hint: 'fuse restore',
+          group: 'History',
+        },
         { value: 'export', label: 'Export a zip', hint: 'fuse export', group: 'Transfer' },
         { value: 'import', label: 'Import a zip', hint: 'fuse import', group: 'Transfer' },
         { value: 'status', label: 'Show status', hint: 'fuse status', group: 'Other' },

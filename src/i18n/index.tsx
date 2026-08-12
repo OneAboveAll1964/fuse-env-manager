@@ -23,7 +23,7 @@ function lookup(dictionary: Dictionary, path: Path): string {
   const segments = path.split('.');
   let current: unknown = dictionary;
   for (const segment of segments) {
-    if (current && typeof current === 'object' && segment in (current as object)) {
+    if (current && typeof current === 'object' && segment in current) {
       current = (current as Record<string, unknown>)[segment];
     } else {
       return path;

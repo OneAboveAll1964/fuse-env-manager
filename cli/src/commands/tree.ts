@@ -1,4 +1,11 @@
-import { filePath, folderFullPath, folderPath, projectsOf, varsOf, workspacesOf } from '@shared/tree';
+import {
+  filePath,
+  folderFullPath,
+  folderPath,
+  projectsOf,
+  varsOf,
+  workspacesOf,
+} from '@shared/tree';
 import type { EnvFile, Id, VaultData } from '@shared/types';
 import { connect } from '../core/client';
 import {
@@ -11,7 +18,14 @@ import {
   removeFolder,
   removeProject,
 } from '../core/mutations';
-import { findFile, findFiles, findProject, pickFolder, pickProject, pickWorkspace } from '../core/resolve';
+import {
+  findFile,
+  findFiles,
+  findProject,
+  pickFolder,
+  pickProject,
+  pickWorkspace,
+} from '../core/resolve';
 import { c, symbols } from '../ui/colors';
 import { failure, heading, info, print, success, table, warn } from '../ui/output';
 import { confirm, isInteractive, select, text, type Choice } from '../ui/prompt';
@@ -26,7 +40,10 @@ function resolveTarget(data: VaultData, spec: string): Target | null {
   const file = findFile(data, spec) ?? findFiles(data, spec)[0];
   if (file) return { kind: 'file', id: file.id, label: filePath(data, file.id) };
 
-  const parts = spec.split(/[/\\]/).map((s) => s.trim()).filter(Boolean);
+  const parts = spec
+    .split(/[/\\]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   const last = parts[parts.length - 1]?.toLowerCase();
 
   const folder = data.folders.find((f) => f.name.toLowerCase() === last);
@@ -58,8 +75,7 @@ export async function workspaceCommand(args: ParsedArgs): Promise<number> {
   }
 
   if (action === 'add') {
-    const name =
-      args.positional[1] ?? (isInteractive() ? await text('Name the workspace') : '');
+    const name = args.positional[1] ?? (isInteractive() ? await text('Name the workspace') : '');
     if (!name) {
       failure('Give a name: fuse workspace add "Acme Studio"');
       return 1;
@@ -134,10 +150,7 @@ export async function projectCommand(args: ParsedArgs): Promise<number> {
       return 1;
     }
     if (!flagBool(args, 'yes', 'y') && isInteractive()) {
-      const ok = await confirm(
-        `Delete ${project.name} and everything inside it?`,
-        false,
-      );
+      const ok = await confirm(`Delete ${project.name} and everything inside it?`, false);
       if (!ok) return 0;
     }
     await client.save((draft) => {
@@ -254,7 +267,8 @@ export async function fileCommand(args: ParsedArgs): Promise<number> {
     }
     const folder = await pickFolder(data, project.id);
     const name =
-      args.positional[1] ?? (isInteractive() ? await text('Name the file', { initial: '.env' }) : '.env');
+      args.positional[1] ??
+      (isInteractive() ? await text('Name the file', { initial: '.env' }) : '.env');
     await client.save((draft) => {
       createFile(draft, project.id, folder?.id ?? null, name);
     });
@@ -305,11 +319,15 @@ export async function copy(args: ParsedArgs, move: boolean): Promise<number> {
   const data = client.data;
 
   const sourceSpec = args.positional[0];
-  let source: EnvFile | null = sourceSpec ? (findFile(data, sourceSpec) ?? findFiles(data, sourceSpec)[0] ?? null) : null;
+  let source: EnvFile | null = sourceSpec
+    ? (findFile(data, sourceSpec) ?? findFiles(data, sourceSpec)[0] ?? null)
+    : null;
 
   if (!source) {
     if (!isInteractive()) {
-      failure(`Give a source file: fuse ${move ? 'mv' : 'cp'} "Project/development/.env" "Project/staging"`);
+      failure(
+        `Give a source file: fuse ${move ? 'mv' : 'cp'} "Project/development/.env" "Project/staging"`,
+      );
       return 1;
     }
     const id = await select<string>(
@@ -339,7 +357,10 @@ export async function copy(args: ParsedArgs, move: boolean): Promise<number> {
       return 1;
     }
   } else {
-    destination = await pickDestination(data, move ? 'Move it into which project?' : 'Copy it into which project?');
+    destination = await pickDestination(
+      data,
+      move ? 'Move it into which project?' : 'Copy it into which project?',
+    );
   }
   if (!destination) return 1;
 
@@ -355,7 +376,9 @@ export async function copy(args: ParsedArgs, move: boolean): Promise<number> {
   success(
     move ? 'File moved' : 'File copied',
     `${name} ${symbols.arrow} ${
-      place.folderId ? folderFullPath(client.data, place.folderId) : client.data.projects.find((p) => p.id === place.projectId)?.name ?? ''
+      place.folderId
+        ? folderFullPath(client.data, place.folderId)
+        : (client.data.projects.find((p) => p.id === place.projectId)?.name ?? '')
     }`,
   );
   return 0;
@@ -416,7 +439,8 @@ export async function tree(args: ParsedArgs): Promise<number> {
       [...grouped.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .forEach(([folder, bucket]) => {
-          if (folder) print(`  ${c.grey(symbols.vertical)}  ${c.grey(symbols.branch)} ${c.cyan(folder)}`);
+          if (folder)
+            print(`  ${c.grey(symbols.vertical)}  ${c.grey(symbols.branch)} ${c.cyan(folder)}`);
           bucket.forEach((file) => {
             const count = varsOf(data, file.id).length;
             const secrets = varsOf(data, file.id).filter((v) => v.secret).length;

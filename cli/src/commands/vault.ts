@@ -47,7 +47,12 @@ export async function status(args: ParsedArgs): Promise<number> {
   if (link) {
     print();
     keyValue([
-      ['linked to', c.brightBlue([link.link.project, link.link.folder, link.link.file].filter(Boolean).join(' / '))],
+      [
+        'linked to',
+        c.brightBlue(
+          [link.link.project, link.link.folder, link.link.file].filter(Boolean).join(' / '),
+        ),
+      ],
       ['link file', c.grey(path.join(link.dir, '.fuse.json'))],
     ]);
   }
@@ -59,7 +64,12 @@ export async function status(args: ParsedArgs): Promise<number> {
     const data = client.data;
     print();
     keyValue([
-      ['mode', client.mode === 'bridge' ? c.green('using the open app') : c.blue('reading the vault directly')],
+      [
+        'mode',
+        client.mode === 'bridge'
+          ? c.green('using the open app')
+          : c.blue('reading the vault directly'),
+      ],
       ['workspaces', String(data.workspaces.length)],
       ['projects', String(data.projects.length)],
       ['env files', String(data.files.length)],
@@ -133,7 +143,9 @@ export async function doctor(args: ParsedArgs): Promise<number> {
   checks.push([
     'app bridge',
     true,
-    bridgeUp ? `reachable on 127.0.0.1:${bridge?.port ?? '?'}` : 'not running, direct access will be used',
+    bridgeUp
+      ? `reachable on 127.0.0.1:${bridge?.port ?? '?'}`
+      : 'not running, direct access will be used',
   ]);
 
   const expiry = sessionExpiry();
@@ -147,7 +159,11 @@ export async function doctor(args: ParsedArgs): Promise<number> {
   const installed = onPath.some((dir) =>
     existsSync(path.join(dir, process.platform === 'win32' ? 'fuse.cmd' : 'fuse')),
   );
-  checks.push(['fuse on PATH', installed, installed ? 'found' : 'install it from the app, CLI page']);
+  checks.push([
+    'fuse on PATH',
+    installed,
+    installed ? 'found' : 'install it from the app, CLI page',
+  ]);
 
   print();
   for (const [label, ok, detail] of checks) {

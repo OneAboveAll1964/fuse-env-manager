@@ -108,7 +108,8 @@ export function ProjectsPage(): JSX.Element {
   const remove = async (project: Project): Promise<void> => {
     const ok = await confirm({
       title: `Delete ${project.name}?`,
-      description: 'Every folder, file and variable inside it goes too. You can restore it from history.',
+      description:
+        'Every folder, file and variable inside it goes too. You can restore it from history.',
       confirmText: 'Delete project',
       variant: 'danger',
     });
@@ -225,7 +226,11 @@ export function ProjectsPage(): JSX.Element {
             const tone = TONE_CLASSES[project.tone];
             const counts = countsFor(project.id);
             return (
-              <Card key={project.id} padding="none" className="flex h-full flex-col overflow-hidden">
+              <Card
+                key={project.id}
+                padding="none"
+                className="flex h-full flex-col overflow-hidden"
+              >
                 <div className="flex items-start gap-3 px-5 py-4">
                   <span
                     className={clsx(

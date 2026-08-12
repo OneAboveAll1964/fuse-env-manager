@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Eye, EyeOff, Wand2 } from 'lucide-react';
-import { VAR_TYPES, VAR_TYPE_LABELS, normaliseKey, suggestType, validateKey, validateValue } from '@shared/env-types';
-import type { EnvVar, GeneratedSecretKind, VarType } from '@shared/types';
 import {
-  Button,
-  Input,
-  Menu,
-  Modal,
-  Select,
-  Switch,
-  Textarea,
-  useToast,
-} from '@/components/ui';
+  VAR_TYPES,
+  VAR_TYPE_LABELS,
+  normaliseKey,
+  suggestType,
+  validateKey,
+  validateValue,
+} from '@shared/env-types';
+import type { EnvVar, GeneratedSecretKind, VarType } from '@shared/types';
+import { Button, Input, Menu, Modal, Select, Switch, Textarea, useToast } from '@/components/ui';
 import { errorMessage, getBridge } from '@/lib/bridge';
 import { useVault } from '@/lib/vault';
 

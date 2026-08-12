@@ -9,7 +9,17 @@ import { removeVars, upsertVars } from '../core/mutations';
 import { readLink, resolveLinkedFile, projectForDirectory } from '../core/link';
 import { findFile, findFiles, pickFileGuided } from '../core/resolve';
 import { c, symbols, truncate } from '../ui/colors';
-import { diffLine, failure, heading, info, maskSecret, print, success, table, warn } from '../ui/output';
+import {
+  diffLine,
+  failure,
+  heading,
+  info,
+  maskSecret,
+  print,
+  success,
+  table,
+  warn,
+} from '../ui/output';
 import { confirm, isInteractive, select, type Choice } from '../ui/prompt';
 import { flagBool, flagString, type ParsedArgs } from '../core/args';
 
@@ -86,7 +96,13 @@ export async function get(args: ParsedArgs): Promise<number> {
     const format = (flagString(args, 'format') as EnvFormat | undefined) ?? file.format;
     print(
       serialize(
-        list.map((v) => ({ key: v.key, value: v.value, note: v.note, enabled: v.enabled, secret: v.secret })),
+        list.map((v) => ({
+          key: v.key,
+          value: v.value,
+          note: v.note,
+          enabled: v.enabled,
+          secret: v.secret,
+        })),
         format,
         { ...DEFAULT_SERIALIZE_OPTIONS, quoteMode: data.settings.quoteMode },
       ).trimEnd(),
@@ -191,7 +207,10 @@ export async function unset(args: ParsedArgs): Promise<number> {
   if (!flagBool(args, 'yes', 'y') && isInteractive()) {
     heading('Remove', filePath(data, file.id));
     targets.forEach((variable) =>
-      diffLine('-', `${variable.key}=${variable.secret ? maskSecret(variable.value) : variable.value}`),
+      diffLine(
+        '-',
+        `${variable.key}=${variable.secret ? maskSecret(variable.value) : variable.value}`,
+      ),
     );
     print();
     const ok = await confirm(`Remove ${targets.length} variables?`, false);

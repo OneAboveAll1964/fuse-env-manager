@@ -130,10 +130,7 @@ export function VaultProvider({ children }: { children: ReactNode }): JSX.Elemen
     return () => events.forEach((event) => window.removeEventListener(event, ping));
   }, [status.locked]);
 
-  const tree = useMemo(
-    () => buildTree(data, data.settings.activeWorkspaceId),
-    [data],
-  );
+  const tree = useMemo(() => buildTree(data, data.settings.activeWorkspaceId), [data]);
   const allTree = useMemo(() => buildTree(data, null), [data]);
 
   const value = useMemo<VaultContextValue>(

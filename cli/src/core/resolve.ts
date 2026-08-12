@@ -43,7 +43,9 @@ export function findFiles(data: VaultData, spec: string): EnvFile[] {
 export function findFile(data: VaultData, spec: string): EnvFile | null {
   const matches = findFiles(data, spec);
   if (matches.length === 1) return matches[0];
-  const exact = matches.find((file) => filePath(data, file.id).toLowerCase() === spec.toLowerCase());
+  const exact = matches.find(
+    (file) => filePath(data, file.id).toLowerCase() === spec.toLowerCase(),
+  );
   return exact ?? null;
 }
 
@@ -88,7 +90,9 @@ export async function pickProject(
     list.map<Choice<Id>>((project) => ({
       value: project.id,
       label: project.name,
-      hint: project.description || `${data.files.filter((f) => f.projectId === project.id).length} files`,
+      hint:
+        project.description ||
+        `${data.files.filter((f) => f.projectId === project.id).length} files`,
     })),
   );
   return list.find((p) => p.id === id) ?? null;

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "fuse-vite",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["dev:vite"],
+      "port": 5178
+    }
+  ]
+}

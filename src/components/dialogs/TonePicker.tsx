@@ -30,7 +30,8 @@ export function TonePicker({
             className={clsx(
               'flex h-8 w-8 items-center justify-center rounded-lg text-white transition-transform active:scale-95',
               TONE_CLASSES[tone].bar,
-              value === tone && 'ring-2 ring-slate-900 ring-offset-2 dark:ring-slate-100 dark:ring-offset-slate-900',
+              value === tone &&
+                'ring-2 ring-slate-900 ring-offset-2 dark:ring-slate-100 dark:ring-offset-slate-900',
             )}
           >
             {value === tone && <Check size={13} />}

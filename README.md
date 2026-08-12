@@ -45,21 +45,21 @@ yarn build:all    # both
 
 ## Where things live
 
-| Platform | Vault folder |
-| --- | --- |
-| macOS | `~/Library/Application Support/Fuse` |
-| Windows | `%APPDATA%\Fuse` |
-| Linux | `~/.config/Fuse` |
+| Platform | Vault folder                         |
+| -------- | ------------------------------------ |
+| macOS    | `~/Library/Application Support/Fuse` |
+| Windows  | `%APPDATA%\Fuse`                     |
+| Linux    | `~/.config/Fuse`                     |
 
 Set `FUSE_HOME` to point both the app and the CLI somewhere else.
 
-| File | What it holds |
-| --- | --- |
-| `vault.fuse` | The whole vault, encrypted |
-| `vault.fuse.bak` | The previous version, kept on every write |
-| `device.key` | The data key sealed by the system keychain, only if you asked to be remembered |
-| `bridge.json` | Loopback port and token, written while the app is open |
-| `session.json` | The CLI's cached session |
+| File             | What it holds                                                                  |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `vault.fuse`     | The whole vault, encrypted                                                     |
+| `vault.fuse.bak` | The previous version, kept on every write                                      |
+| `device.key`     | The data key sealed by the system keychain, only if you asked to be remembered |
+| `bridge.json`    | Loopback port and token, written while the app is open                         |
+| `session.json`   | The CLI's cached session                                                       |
 
 ## Security
 
@@ -117,12 +117,12 @@ dictionary and an entry in `LANGUAGES`.
 
 ## Commands
 
-| Command | What it does |
-| --- | --- |
-| `yarn dev` | Vite and Electron together with hot reload |
-| `yarn typecheck` | Type check every workspace |
-| `yarn lint` | ESLint |
-| `yarn format` | Prettier |
-| `yarn icons` | Rebuild the app icons |
-| `yarn build:cli` | Bundle the CLI into `dist-cli/` |
-| `yarn sync:cli` | Copy the CLI sources into the standalone package |
+| Command          | What it does                                     |
+| ---------------- | ------------------------------------------------ |
+| `yarn dev`       | Vite and Electron together with hot reload       |
+| `yarn typecheck` | Type check every workspace                       |
+| `yarn lint`      | ESLint                                           |
+| `yarn format`    | Prettier                                         |
+| `yarn icons`     | Rebuild the app icons                            |
+| `yarn build:cli` | Bundle the CLI into `dist-cli/`                  |
+| `yarn sync:cli`  | Copy the CLI sources into the standalone package |

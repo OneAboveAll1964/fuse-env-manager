@@ -87,7 +87,9 @@ function collectScope(data: VaultData, options: ExportOptions): Payload {
   const vars = data.vars
     .filter((v) => fileIds.has(v.fileId))
     .map((v) =>
-      options.includeSecrets || !v.secret ? v : { ...v, value: '', note: v.note || 'Secret omitted' },
+      options.includeSecrets || !v.secret
+        ? v
+        : { ...v, value: '', note: v.note || 'Secret omitted' },
     );
 
   return {
@@ -110,7 +112,9 @@ function safeSegment(value: string): string {
 
 function diskPathFor(data: VaultData, payload: Payload, file: EnvFile): string {
   const project = payload.projects.find((p) => p.id === file.projectId);
-  const workspace = project ? payload.workspaces.find((w) => w.id === project.workspaceId) : undefined;
+  const workspace = project
+    ? payload.workspaces.find((w) => w.id === project.workspaceId)
+    : undefined;
   const segments = [
     workspace ? safeSegment(workspace.name) : 'workspace',
     project ? safeSegment(project.name) : 'project',
@@ -268,7 +272,10 @@ export async function importArchive(
         id: newId(),
         name: existing
           ? workspace.name
-          : uniqueName(workspace.name, data.workspaces.map((w) => w.name)),
+          : uniqueName(
+              workspace.name,
+              data.workspaces.map((w) => w.name),
+            ),
         order: nextOrder(data.workspaces),
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -301,7 +308,12 @@ export async function importArchive(
         id: newId(),
         workspaceId,
         links: [],
-        name: existing ? project.name : uniqueName(project.name, siblings.map((p) => p.name)),
+        name: existing
+          ? project.name
+          : uniqueName(
+              project.name,
+              siblings.map((p) => p.name),
+            ),
         order: nextOrder(siblings),
         createdAt: nowIso(),
         updatedAt: nowIso(),

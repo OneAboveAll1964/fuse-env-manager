@@ -11,9 +11,9 @@ import type {
   Workspace,
 } from './types';
 
-export function byOrder<T extends { order: number; name: string }>(a: T, b: T): number {
+export function byOrder<T extends { order: number; name?: string }>(a: T, b: T): number {
   if (a.order !== b.order) return a.order - b.order;
-  return a.name.localeCompare(b.name);
+  return (a.name ?? '').localeCompare(b.name ?? '');
 }
 
 export function nextOrder(items: { order: number }[]): number {
@@ -27,11 +27,13 @@ export function foldersOf(data: VaultData, projectId: Id, parentId: Id | null): 
 }
 
 export function filesOf(data: VaultData, projectId: Id, folderId: Id | null): EnvFile[] {
-  return data.files.filter((f) => f.projectId === projectId && f.folderId === folderId).sort(byOrder);
+  return data.files
+    .filter((f) => f.projectId === projectId && f.folderId === folderId)
+    .sort(byOrder);
 }
 
 export function varsOf(data: VaultData, fileId: Id): EnvVar[] {
-  return data.vars.filter((v) => v.fileId === fileId).sort(byOrder);
+  return data.vars.filter((v) => v.fileId === fileId).sort((a, b) => a.order - b.order);
 }
 
 export function projectsOf(data: VaultData, workspaceId: Id): Project[] {
@@ -62,7 +64,9 @@ export function fileIdsUnderProject(data: VaultData, projectId: Id): Id[] {
 }
 
 export function fileIdsUnderWorkspace(data: VaultData, workspaceId: Id): Id[] {
-  const projectIds = new Set(data.projects.filter((p) => p.workspaceId === workspaceId).map((p) => p.id));
+  const projectIds = new Set(
+    data.projects.filter((p) => p.workspaceId === workspaceId).map((p) => p.id),
+  );
   return data.files.filter((f) => projectIds.has(f.projectId)).map((f) => f.id);
 }
 
@@ -72,9 +76,7 @@ export function folderPath(data: VaultData, folderId: Id | null): string[] {
   let guard = 0;
   while (current && guard < 64) {
     out.unshift(current.name);
-    current = current.parentId
-      ? data.folders.find((f) => f.id === current?.parentId)
-      : undefined;
+    current = current.parentId ? data.folders.find((f) => f.id === current?.parentId) : undefined;
     guard += 1;
   }
   return out;
@@ -94,7 +96,9 @@ export function folderFullPath(data: VaultData, folderId: Id): string {
   if (!folder) return '';
   const project = data.projects.find((p) => p.id === folder.projectId);
   const workspace = project ? data.workspaces.find((w) => w.id === project.workspaceId) : undefined;
-  return [workspace?.name, project?.name, ...folderPath(data, folderId)].filter(Boolean).join(' / ');
+  return [workspace?.name, project?.name, ...folderPath(data, folderId)]
+    .filter(Boolean)
+    .join(' / ');
 }
 
 export function projectFullPath(data: VaultData, projectId: Id): string {
@@ -176,7 +180,9 @@ function projectNode(data: VaultData, project: Project, parentPath: string): Tre
 export function buildTree(data: VaultData, workspaceId: Id | null): TreeNode[] {
   const workspaces = workspacesOf(data).filter((w) => !workspaceId || w.id === workspaceId);
   return workspaces.map((workspace) => {
-    const children = projectsOf(data, workspace.id).map((p) => projectNode(data, p, workspace.name));
+    const children = projectsOf(data, workspace.id).map((p) =>
+      projectNode(data, p, workspace.name),
+    );
     return {
       id: workspace.id,
       kind: 'workspace' as const,

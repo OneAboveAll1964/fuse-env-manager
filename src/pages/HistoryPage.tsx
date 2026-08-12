@@ -38,18 +38,20 @@ type Snapshot = {
   vars?: Array<{ id: string; key: string; value: string; secret: boolean; enabled: boolean }>;
 };
 
-const KIND_TONE: Record<ChangeKind, 'success' | 'warning' | 'danger' | 'brand' | 'neutral' | 'info'> =
-  {
-    create: 'success',
-    update: 'brand',
-    delete: 'danger',
-    rename: 'info',
-    move: 'info',
-    duplicate: 'neutral',
-    import: 'warning',
-    restore: 'success',
-    reorder: 'neutral',
-  };
+const KIND_TONE: Record<
+  ChangeKind,
+  'success' | 'warning' | 'danger' | 'brand' | 'neutral' | 'info'
+> = {
+  create: 'success',
+  update: 'brand',
+  delete: 'danger',
+  rename: 'info',
+  move: 'info',
+  duplicate: 'neutral',
+  import: 'warning',
+  restore: 'success',
+  reorder: 'neutral',
+};
 
 const ENTITY_ICON: Record<EntityKind, JSX.Element> = {
   workspace: <Building2 size={13} />,
@@ -123,7 +125,8 @@ export function HistoryPage(): JSX.Element {
   const clear = async (): Promise<void> => {
     const ok = await confirm({
       title: 'Clear the whole history?',
-      description: 'Every recorded change and every stored previous value is removed. This cannot be undone.',
+      description:
+        'Every recorded change and every stored previous value is removed. This cannot be undone.',
       confirmText: 'Clear history',
       variant: 'danger',
     });
@@ -189,7 +192,8 @@ export function HistoryPage(): JSX.Element {
           ]}
         />
         <span className="text-[11px] text-slate-400">
-          Keeping {data.settings.historyRetentionDays > 0
+          Keeping{' '}
+          {data.settings.historyRetentionDays > 0
             ? `${data.settings.historyRetentionDays} days`
             : 'everything'}
           {data.settings.historyMaxEntries > 0
@@ -233,9 +237,7 @@ export function HistoryPage(): JSX.Element {
                     {revision.label || revision.entity}
                   </span>
                   <Badge variant={KIND_TONE[revision.kind]}>{revision.kind}</Badge>
-                  {revision.source !== 'app' && (
-                    <Badge variant="neutral">{revision.source}</Badge>
-                  )}
+                  {revision.source !== 'app' && <Badge variant="neutral">{revision.source}</Badge>}
                 </span>
                 <span className="mt-0.5 block truncate text-[11px] text-slate-500 dark:text-slate-400">
                   {truncateMiddle(revision.path, 78)}

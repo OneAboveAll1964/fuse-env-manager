@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { DEFAULT_SETTINGS } from '@shared/defaults';
 import { backupPath, defaultVaultDir, vaultPath } from '@shared/paths';
 import { decryptVault, encryptVault, unwrapDek, VaultError } from '@shared/vault-crypto';
@@ -131,7 +138,9 @@ export async function connect(
   }
 
   const dek = await resolveDek({ ttlSeconds, quiet: options.quiet ?? false });
-  let cache = normalise(JSON.parse(decryptVault(readVaultFile(), dek).toString('utf8')) as VaultData);
+  let cache = normalise(
+    JSON.parse(decryptVault(readVaultFile(), dek).toString('utf8')) as VaultData,
+  );
 
   return {
     mode: 'direct',
@@ -150,7 +159,9 @@ export async function connect(
         JSON.parse(decryptVault(readVaultFile(), dek).toString('utf8')) as VaultData,
       );
       await mutate(fresh);
-      writeVaultFile(encryptVault(readVaultFile(), dek, Buffer.from(JSON.stringify(fresh), 'utf8')));
+      writeVaultFile(
+        encryptVault(readVaultFile(), dek, Buffer.from(JSON.stringify(fresh), 'utf8')),
+      );
       cache = fresh;
       return cache;
     },

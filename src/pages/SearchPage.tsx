@@ -179,7 +179,8 @@ export function SearchPage(): JSX.Element {
             </TBody>
           </Table>
           <div className="border-t border-slate-100 px-6 py-2 text-[11px] text-slate-400 dark:border-slate-800">
-            Types shown in the vault: {Object.values(VAR_TYPE_LABELS).slice(0, 6).join(', ')} and more
+            Types shown in the vault: {Object.values(VAR_TYPE_LABELS).slice(0, 6).join(', ')} and
+            more
           </div>
         </Card>
       )}

@@ -330,10 +330,4 @@ export type LinkedPathInfo = {
 };
 
 export type GeneratedSecretKind =
-  | 'password'
-  | 'hex'
-  | 'base64'
-  | 'uuid'
-  | 'jwt-secret'
-  | 'api-key'
-  | 'pin';
+  'password' | 'hex' | 'base64' | 'uuid' | 'jwt-secret' | 'api-key' | 'pin';

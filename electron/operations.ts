@@ -103,7 +103,10 @@ export async function createWorkspace(
   const data = await mutate((draft) => {
     const workspace: Workspace = {
       id,
-      name: uniqueName(input.name.trim() || 'Workspace', draft.workspaces.map((w) => w.name)),
+      name: uniqueName(
+        input.name.trim() || 'Workspace',
+        draft.workspaces.map((w) => w.name),
+      ),
       description: input.description ?? '',
       tone: input.tone ?? 'brand',
       icon: input.icon ?? 'Building2',
@@ -189,7 +192,10 @@ export async function duplicateWorkspace(
     const workspace: Workspace = {
       ...source,
       id: newWorkspaceId,
-      name: uniqueName(name, draft.workspaces.map((w) => w.name)),
+      name: uniqueName(
+        name,
+        draft.workspaces.map((w) => w.name),
+      ),
       order: nextOrder(draft.workspaces),
       createdAt: nowIso(),
       updatedAt: nowIso(),
@@ -260,7 +266,13 @@ function cloneProjectInto(
     };
     data.files.push(cloned);
     for (const variable of data.vars.filter((v) => v.fileId === file.id)) {
-      data.vars.push({ ...variable, id: newId(), fileId: cloned.id, createdAt: nowIso(), updatedAt: nowIso() });
+      data.vars.push({
+        ...variable,
+        id: newId(),
+        fileId: cloned.id,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
     }
   }
   return project;
@@ -278,7 +290,10 @@ export async function createProject(
     const project: Project = {
       id,
       workspaceId: input.workspaceId,
-      name: uniqueName(input.name.trim() || 'Project', siblings.map((p) => p.name)),
+      name: uniqueName(
+        input.name.trim() || 'Project',
+        siblings.map((p) => p.name),
+      ),
       description: input.description ?? '',
       tone: input.tone ?? 'slate',
       icon: input.icon ?? 'Package',
@@ -450,7 +465,10 @@ export async function createFolder(
       id,
       projectId: input.projectId,
       parentId: input.parentId,
-      name: uniqueName(input.name.trim() || 'folder', siblings.map((f) => f.name)),
+      name: uniqueName(
+        input.name.trim() || 'folder',
+        siblings.map((f) => f.name),
+      ),
       description: input.description ?? '',
       tone: input.tone ?? 'slate',
       order: nextOrder(siblings),
@@ -541,7 +559,12 @@ export async function duplicateFolder(
               ? (map.get(original.parentId) ?? null)
               : null,
         name:
-          oldId === id ? uniqueName(name, siblings.map((f) => f.name)) : original.name,
+          oldId === id
+            ? uniqueName(
+                name,
+                siblings.map((f) => f.name),
+              )
+            : original.name,
         order: oldId === id ? nextOrder(siblings) : original.order,
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -627,7 +650,10 @@ export async function createFile(
       id,
       projectId: input.projectId,
       folderId: input.folderId,
-      name: uniqueName(input.name.trim() || '.env', siblings.map((f) => f.name)),
+      name: uniqueName(
+        input.name.trim() || '.env',
+        siblings.map((f) => f.name),
+      ),
       description: input.description ?? '',
       format: input.format ?? draft.settings.defaultFormat,
       order: nextOrder(siblings),
@@ -703,7 +729,10 @@ export async function duplicateFile(
     const file: EnvFile = {
       ...source,
       id: newFileId,
-      name: uniqueName(name, siblings.map((f) => f.name)),
+      name: uniqueName(
+        name,
+        siblings.map((f) => f.name),
+      ),
       order: nextOrder(siblings),
       createdAt: nowIso(),
       updatedAt: nowIso(),
@@ -782,11 +811,7 @@ export function renderFile(fileId: Id, options: RenderOptions = {}): string {
   );
 }
 
-export function previewImport(
-  fileId: Id,
-  text: string,
-  format: EnvFormat | 'auto',
-): ImportPreview {
+export function previewImport(fileId: Id, text: string, format: EnvFormat | 'auto'): ImportPreview {
   const data = requireUnlocked();
   const file = data.files.find((f) => f.id === fileId);
   const resolved: EnvFormat = format === 'auto' ? (file?.format ?? 'dotenv') : format;
@@ -898,7 +923,10 @@ export function removeVars(ids: Id[]): Promise<VaultData> {
   });
 }
 
-export function bulkUpsertVars(input: BulkVarInput, source: ChangeSource = 'app'): Promise<VaultData> {
+export function bulkUpsertVars(
+  input: BulkVarInput,
+  source: ChangeSource = 'app',
+): Promise<VaultData> {
   return mutate((data) => {
     const file = data.files.find((f) => f.id === input.fileId);
     if (!file) notFound('file');

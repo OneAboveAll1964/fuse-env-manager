@@ -183,7 +183,12 @@ export function Sider({
         </PopoverPanel>
       </div>
 
-      <nav className={clsx('min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2.5 pb-3', collapsed && 'px-2')}>
+      <nav
+        className={clsx(
+          'min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2.5 pb-3',
+          collapsed && 'px-2',
+        )}
+      >
         {items.map((item) => {
           const Icon = item.icon;
           return (

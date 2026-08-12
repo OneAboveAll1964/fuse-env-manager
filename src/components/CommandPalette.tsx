@@ -147,8 +147,7 @@ export function CommandPalette({
     }
 
     const matchedCommands = commands.filter(
-      (c) =>
-        c.title.toLowerCase().includes(term) || c.subtitle.toLowerCase().includes(term),
+      (c) => c.title.toLowerCase().includes(term) || c.subtitle.toLowerCase().includes(term),
     );
 
     const matchedFiles = data.files
@@ -259,7 +258,9 @@ export function CommandPalette({
                     >
                       <span className="shrink-0 text-slate-400">{entry.icon}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium">{entry.title}</span>
+                        <span className="block truncate text-[13px] font-medium">
+                          {entry.title}
+                        </span>
                         {entry.subtitle && (
                           <span className="block truncate text-[11px] text-slate-500 dark:text-slate-400">
                             {entry.subtitle}

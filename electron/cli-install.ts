@@ -17,7 +17,11 @@ export function bundledCliPath(): string | null {
 }
 
 function windowsBinDir(): string {
-  return path.join(process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local'), 'Fuse', 'bin');
+  return path.join(
+    process.env.LOCALAPPDATA ?? path.join(os.homedir(), 'AppData', 'Local'),
+    'Fuse',
+    'bin',
+  );
 }
 
 export function installedCliPath(): string | null {
@@ -116,7 +120,12 @@ export function installCli(): CliInstallResult {
 export function uninstallCli(): CliInstallResult {
   const target = installedCliPath();
   if (!target) {
-    return { installed: false, path: null, message: 'The CLI is not installed.', needsPathEntry: null };
+    return {
+      installed: false,
+      path: null,
+      message: 'The CLI is not installed.',
+      needsPathEntry: null,
+    };
   }
   try {
     unlinkSync(target);

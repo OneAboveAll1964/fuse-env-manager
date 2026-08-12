@@ -44,7 +44,8 @@ export async function exportArchive(args: ParsedArgs): Promise<number> {
   const client = await connect({ preferDirect: flagBool(args, 'direct') });
   const data = client.data;
 
-  const scopeSpec = flagString(args, 'project') ?? flagString(args, 'workspace') ?? args.positional[0];
+  const scopeSpec =
+    flagString(args, 'project') ?? flagString(args, 'workspace') ?? args.positional[0];
   let projectIds: Id[] = [];
   let workspaceIds: Id[] = [];
 
@@ -100,7 +101,14 @@ export async function exportArchive(args: ParsedArgs): Promise<number> {
     wantedProjects.some((p) => p.workspaceId === w.id),
   );
 
-  const payload: Payload = { workspaces, projects: wantedProjects, folders, files, vars, revisions: [] };
+  const payload: Payload = {
+    workspaces,
+    projects: wantedProjects,
+    folders,
+    files,
+    vars,
+    revisions: [],
+  };
 
   const manifest: ArchiveManifest = {
     kind: 'fuse-archive',
@@ -177,7 +185,10 @@ export async function exportArchive(args: ParsedArgs): Promise<number> {
   ]);
   print();
   if (!encrypt && includeSecrets) {
-    warn('This archive holds secrets in plain text', 'keep it safe and delete it when you are done');
+    warn(
+      'This archive holds secrets in plain text',
+      'keep it safe and delete it when you are done',
+    );
   }
   success('Export written');
   return 0;
@@ -257,7 +268,15 @@ export async function importArchive(args: ParsedArgs): Promise<number> {
   }
 
   const client = await connect({ preferDirect: flagBool(args, 'direct') });
-  const counts = { workspaces: 0, projects: 0, folders: 0, files: 0, vars: 0, skipped: 0, updated: 0 };
+  const counts = {
+    workspaces: 0,
+    projects: 0,
+    folders: 0,
+    files: 0,
+    vars: 0,
+    skipped: 0,
+    updated: 0,
+  };
 
   await client.save((draft) => {
     const workspaceMap = new Map<Id, Id>();
@@ -297,7 +316,12 @@ export async function importArchive(args: ParsedArgs): Promise<number> {
         id: newId(),
         workspaceId,
         links: [],
-        name: existing ? project.name : uniqueName(project.name, siblings.map((p) => p.name)),
+        name: existing
+          ? project.name
+          : uniqueName(
+              project.name,
+              siblings.map((p) => p.name),
+            ),
         order: nextOrder(siblings),
         createdAt: nowIso(),
         updatedAt: nowIso(),
@@ -307,7 +331,9 @@ export async function importArchive(args: ParsedArgs): Promise<number> {
       counts.projects += 1;
     }
 
-    const ordered = [...payload.folders].sort((a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0));
+    const ordered = [...payload.folders].sort(
+      (a, b) => (a.parentId ? 1 : 0) - (b.parentId ? 1 : 0),
+    );
     for (const folder of ordered) {
       const projectId = projectMap.get(folder.projectId);
       if (!projectId) continue;

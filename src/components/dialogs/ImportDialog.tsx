@@ -163,7 +163,12 @@ export function ImportDialog({
             <SegmentedControl items={MODES} value={mode} onChange={setMode} size="sm" />
           </div>
           <div className="flex-1" />
-          <Button variant="outline" size="sm" iconLeft={<FileUp size={14} />} onClick={() => void pickFile()}>
+          <Button
+            variant="outline"
+            size="sm"
+            iconLeft={<FileUp size={14} />}
+            onClick={() => void pickFile()}
+          >
             Load a file
           </Button>
         </div>

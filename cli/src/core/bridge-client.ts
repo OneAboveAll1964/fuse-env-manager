@@ -28,7 +28,12 @@ export function readBridgeFile(): BridgeHandle | null {
   }
 }
 
-function post(handle: BridgeHandle, path: string, body: unknown, timeoutMs: number): Promise<string> {
+function post(
+  handle: BridgeHandle,
+  path: string,
+  body: unknown,
+  timeoutMs: number,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify(body);
     const req = request(

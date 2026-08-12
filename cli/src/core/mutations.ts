@@ -71,7 +71,10 @@ export function record(
 export function createWorkspace(data: VaultData, name: string, tone: Tone = 'brand'): Workspace {
   const workspace: Workspace = {
     id: newId(),
-    name: uniqueName(name, data.workspaces.map((w) => w.name)),
+    name: uniqueName(
+      name,
+      data.workspaces.map((w) => w.name),
+    ),
     description: '',
     tone,
     icon: 'Building2',
@@ -98,7 +101,10 @@ export function createProject(data: VaultData, workspaceId: Id, name: string): P
   const project: Project = {
     id: newId(),
     workspaceId,
-    name: uniqueName(name, siblings.map((p) => p.name)),
+    name: uniqueName(
+      name,
+      siblings.map((p) => p.name),
+    ),
     description: '',
     tone: 'slate',
     icon: 'Package',
@@ -127,14 +133,15 @@ export function createFolder(
   parentId: Id | null,
   name: string,
 ): EnvFolder {
-  const siblings = data.folders.filter(
-    (f) => f.projectId === projectId && f.parentId === parentId,
-  );
+  const siblings = data.folders.filter((f) => f.projectId === projectId && f.parentId === parentId);
   const folder: EnvFolder = {
     id: newId(),
     projectId,
     parentId,
-    name: uniqueName(name, siblings.map((f) => f.name)),
+    name: uniqueName(
+      name,
+      siblings.map((f) => f.name),
+    ),
     description: '',
     tone: name === 'production' ? 'rose' : name === 'staging' ? 'amber' : 'emerald',
     order: nextOrder(siblings),
@@ -166,7 +173,10 @@ export function createFile(
     id: newId(),
     projectId,
     folderId,
-    name: uniqueName(name, siblings.map((f) => f.name)),
+    name: uniqueName(
+      name,
+      siblings.map((f) => f.name),
+    ),
     description: '',
     format: format ?? data.settings.defaultFormat,
     order: nextOrder(siblings),
@@ -366,7 +376,13 @@ export function removeProject(data: VaultData, projectId: Id): void {
   });
 }
 
-export function copyFile(data: VaultData, sourceId: Id, targetFolderId: Id | null, projectId: Id, name?: string): EnvFile {
+export function copyFile(
+  data: VaultData,
+  sourceId: Id,
+  targetFolderId: Id | null,
+  projectId: Id,
+  name?: string,
+): EnvFile {
   const source = data.files.find((f) => f.id === sourceId);
   if (!source) throw new Error('That file no longer exists');
   const created = createFile(data, projectId, targetFolderId, name ?? source.name, source.format);

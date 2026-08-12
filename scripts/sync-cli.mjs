@@ -3,8 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TARGET =
-  process.argv[2] ?? path.resolve(ROOT, '..', 'fuse-env-manager-cli');
+const TARGET = process.argv[2] ?? path.resolve(ROOT, '..', 'fuse-env-manager-cli');
 
 if (!existsSync(TARGET)) {
   console.error(`The CLI repository was not found at ${TARGET}`);
