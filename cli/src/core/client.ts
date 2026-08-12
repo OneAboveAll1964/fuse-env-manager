@@ -102,7 +102,7 @@ export async function connect(
 ): Promise<Client> {
   if (!vaultExists()) {
     throw new Error(
-      `No vault was found at ${vaultPath()}. Open the Fuse app to create one, or set FUSE_HOME.`,
+      `No vault was found at ${vaultPath()}. Run "fuse init" to create one, open the Fuse app, or set FUSE_HOME.`,
     );
   }
 

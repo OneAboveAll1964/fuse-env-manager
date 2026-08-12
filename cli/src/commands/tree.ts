@@ -36,23 +36,95 @@ type Target =
   | { kind: 'folder'; id: Id; label: string }
   | { kind: 'project'; id: Id; label: string };
 
-function resolveTarget(data: VaultData, spec: string): Target | null {
-  const file = findFile(data, spec) ?? findFiles(data, spec)[0];
-  if (file) return { kind: 'file', id: file.id, label: filePath(data, file.id) };
-
-  const parts = spec
+function segmentsOf(spec: string): string[] {
+  return spec
     .split(/[/\\]/)
-    .map((s) => s.trim())
+    .map((part) => part.trim().toLowerCase())
     .filter(Boolean);
-  const last = parts[parts.length - 1]?.toLowerCase();
+}
 
-  const folder = data.folders.find((f) => f.name.toLowerCase() === last);
-  if (folder) return { kind: 'folder', id: folder.id, label: folderFullPath(data, folder.id) };
+function pathMatches(path: string, parts: string[]): boolean {
+  const haystack = segmentsOf(path);
+  let cursor = 0;
+  for (const part of parts) {
+    const index = haystack.indexOf(part, cursor);
+    if (index === -1) return false;
+    cursor = index + 1;
+  }
+  return true;
+}
 
-  const project = findProject(data, spec);
-  if (project) return { kind: 'project', id: project.id, label: project.name };
+function candidatesFor(data: VaultData, spec: string, kinds: Target['kind'][]): Target[] {
+  const parts = segmentsOf(spec);
+  if (parts.length === 0) return [];
+  const last = parts[parts.length - 1];
 
-  return null;
+  const exact: Target[] = [];
+
+  if (kinds.includes('file')) {
+    for (const file of data.files) {
+      if (file.name.toLowerCase() !== last) continue;
+      const label = filePath(data, file.id);
+      if (pathMatches(label, parts)) exact.push({ kind: 'file', id: file.id, label });
+    }
+  }
+  if (kinds.includes('folder')) {
+    for (const folder of data.folders) {
+      if (folder.name.toLowerCase() !== last) continue;
+      const label = folderFullPath(data, folder.id);
+      if (pathMatches(label, parts)) exact.push({ kind: 'folder', id: folder.id, label });
+    }
+  }
+  if (kinds.includes('project')) {
+    for (const project of data.projects) {
+      if (project.name.toLowerCase() !== last) continue;
+      exact.push({ kind: 'project', id: project.id, label: project.name });
+    }
+  }
+  if (exact.length > 0) return exact;
+
+  if (kinds.includes('file')) {
+    const fuzzy = findFiles(data, spec).map<Target>((file) => ({
+      kind: 'file',
+      id: file.id,
+      label: filePath(data, file.id),
+    }));
+    if (fuzzy.length > 0) return fuzzy;
+  }
+  if (kinds.includes('project')) {
+    const project = findProject(data, spec);
+    if (project) return [{ kind: 'project', id: project.id, label: project.name }];
+  }
+  return [];
+}
+
+async function resolveTarget(
+  data: VaultData,
+  spec: string,
+  message: string,
+  kinds: Target['kind'][] = ['file', 'folder', 'project'],
+): Promise<Target | null> {
+  const found = candidatesFor(data, spec, kinds);
+  if (found.length === 0) {
+    failure(`Nothing matched "${spec}"`);
+    return null;
+  }
+  if (found.length === 1) return found[0];
+
+  if (!isInteractive()) {
+    failure(`"${spec}" matched ${found.length} things. Be more specific.`);
+    found.slice(0, 10).forEach((item) => print(`    ${c.grey(`${item.kind}  ${item.label}`)}`));
+    return null;
+  }
+  const picked = await select<string>(
+    message,
+    found.map<Choice<string>>((item) => ({
+      value: `${item.kind}:${item.id}`,
+      label: item.label,
+      hint: item.kind,
+    })),
+  );
+  return found.find((item) => `${item.kind}:${item.id}` === picked) ?? null;
 }
 
 export async function workspaceCommand(args: ParsedArgs): Promise<number> {
@@ -214,11 +286,8 @@ export async function folderCommand(args: ParsedArgs): Promise<number> {
       failure('Give a folder: fuse folder rm production');
       return 1;
     }
-    const target = resolveTarget(data, spec);
-    if (!target || target.kind !== 'folder') {
-      failure(`No folder matched "${spec}"`);
-      return 1;
-    }
+    const target = await resolveTarget(data, spec, 'Which folder?', ['folder']);
+    if (!target || target.kind !== 'folder') return 1;
     if (!flagBool(args, 'yes', 'y') && isInteractive()) {
       const ok = await confirm(`Delete ${target.label} and everything inside it?`, false);
       if (!ok) return 0;
@@ -345,11 +414,15 @@ export async function copy(args: ParsedArgs, move: boolean): Promise<number> {
   let destination: { projectId: Id; folderId: Id | null } | null = null;
 
   if (destinationSpec) {
-    const target = resolveTarget(data, destinationSpec);
-    if (target?.kind === 'folder') {
+    const target = await resolveTarget(data, destinationSpec, 'Into which one?', [
+      'folder',
+      'project',
+    ]);
+    if (!target) return 1;
+    if (target.kind === 'folder') {
       const folder = data.folders.find((f) => f.id === target.id);
       if (folder) destination = { projectId: folder.projectId, folderId: folder.id };
-    } else if (target?.kind === 'project') {
+    } else if (target.kind === 'project') {
       destination = { projectId: target.id, folderId: null };
     }
     if (!destination) {
@@ -368,19 +441,13 @@ export async function copy(args: ParsedArgs, move: boolean): Promise<number> {
   const sourceId = source.id;
   const place = destination;
 
+  let createdId = '';
   await client.save((draft) => {
-    copyFile(draft, sourceId, place.folderId, place.projectId, name);
+    createdId = copyFile(draft, sourceId, place.folderId, place.projectId, name).id;
     if (move) removeFile(draft, sourceId);
   });
 
-  success(
-    move ? 'File moved' : 'File copied',
-    `${name} ${symbols.arrow} ${
-      place.folderId
-        ? folderFullPath(client.data, place.folderId)
-        : (client.data.projects.find((p) => p.id === place.projectId)?.name ?? '')
-    }`,
-  );
+  success(move ? 'File moved' : 'File copied', createdId ? filePath(client.data, createdId) : name);
   return 0;
 }
 
@@ -393,11 +460,8 @@ export async function remove(args: ParsedArgs): Promise<number> {
     return 1;
   }
 
-  const target = resolveTarget(data, spec);
-  if (!target) {
-    failure(`Nothing matched "${spec}"`);
-    return 1;
-  }
+  const target = await resolveTarget(data, spec, 'Remove which one?');
+  if (!target) return 1;
 
   if (!flagBool(args, 'yes', 'y') && isInteractive()) {
     const ok = await confirm(

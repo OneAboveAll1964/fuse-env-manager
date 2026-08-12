@@ -98,6 +98,8 @@ async function dispatch(args: ParsedArgs): Promise<number> {
     case 'import':
       return archive.importArchive(args);
 
+    case 'init':
+      return vault.init(args);
     case 'status':
       return vault.status(args);
     case 'unlock':

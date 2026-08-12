@@ -56,7 +56,11 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
         summary: 'Run a command with the variables injected',
         example: 'fuse run -- npm start',
       },
-      { command: 'export --format shell', summary: 'Print the file in any supported format' },
+      {
+        command: 'export --format shell',
+        summary: 'Print one file in any format, to the terminal',
+        example: 'fuse export --format k8s-secret > secret.yaml',
+      },
       {
         command: 'gen <kind>',
         summary: 'Generate a password, hex, base64, uuid, jwt-secret, api-key or pin',
@@ -68,13 +72,22 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
     entries: [
       { command: 'history [term]', summary: 'Show recent changes' },
       { command: 'restore <id>', summary: 'Put back a previous state' },
-      { command: 'export-zip', summary: 'Write a zip archive of part or all of the vault' },
+      {
+        command: 'export-zip',
+        summary: 'Write a zip archive into this folder',
+        example: 'fuse export-zip --out ~/Backups/fuse.zip',
+      },
       { command: 'import <zip>', summary: 'Read a Fuse archive back in' },
     ],
   },
   {
     title: 'Session',
     entries: [
+      {
+        command: 'init',
+        summary: 'Create a vault on this machine, for use without the desktop app',
+        example: 'fuse init --sample',
+      },
       { command: 'unlock --ttl 15m', summary: 'Cache an unlocked session for this machine' },
       { command: 'lock', summary: 'Drop the cached session' },
       { command: 'doctor', summary: 'Check the install, the vault and the bridge' },

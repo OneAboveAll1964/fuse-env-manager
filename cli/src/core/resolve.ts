@@ -1,7 +1,7 @@
 import { filePath, folderPath, foldersOf, filesOf, projectsOf, workspacesOf } from '@shared/tree';
 import type { EnvFile, EnvFolder, Id, Project, VaultData, Workspace } from '@shared/types';
 import { c } from '../ui/colors';
-import { select, type Choice } from '../ui/prompt';
+import { isInteractive, select, type Choice } from '../ui/prompt';
 
 export function describeFile(data: VaultData, fileId: Id): string {
   return filePath(data, fileId);
@@ -85,6 +85,7 @@ export async function pickProject(
 ): Promise<Project | null> {
   const list = projectsOf(data, workspaceId);
   if (list.length === 0) return null;
+  if (list.length === 1) return list[0];
   const id = await select<Id>(
     message,
     list.map<Choice<Id>>((project) => ({
@@ -124,6 +125,7 @@ export async function pickFolder(
 
   if (choices.length === 0) return null;
   if (choices.length === 1 && choices[0].value === null) return null;
+  if (!isInteractive()) return null;
 
   const id = await select<Id | null>(message, choices);
   return id ? (data.folders.find((f) => f.id === id) ?? null) : null;

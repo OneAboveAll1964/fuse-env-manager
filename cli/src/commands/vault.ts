@@ -1,15 +1,110 @@
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { emptyVault } from '@shared/defaults';
+import { passwordStrength } from '@shared/password';
 import { defaultVaultDir, vaultPath } from '@shared/paths';
-import { generateSecret } from '@shared/vault-crypto';
+import { createVault, generateSecret } from '@shared/vault-crypto';
 import { filePath } from '@shared/tree';
 import { connect, unlockAndCache, vaultExists } from '../core/client';
 import { readBridgeFile, bridgeAvailable } from '../core/bridge-client';
 import { clearSession, parseDuration, sessionExpiry } from '../core/session';
 import { projectForDirectory, readLink, resolveLinkedFile } from '../core/link';
+import { createFile, createFolder, createProject, createWorkspace } from '../core/mutations';
 import { c, symbols } from '../ui/colors';
 import { box, failure, heading, info, keyValue, print, success, warn } from '../ui/output';
+import { confirm, isInteractive, password as askPassword, text } from '../ui/prompt';
 import { flagBool, flagString, type ParsedArgs } from '../core/args';
+
+export async function init(args: ParsedArgs): Promise<number> {
+  if (vaultExists()) {
+    failure(`A vault already exists at ${vaultPath()}`);
+    info('Open it with', 'fuse unlock');
+    return 1;
+  }
+
+  heading('Create a vault', defaultVaultDir());
+  print();
+  box(
+    [
+      'The master password is the only way into this vault.',
+      'It is never written to disk and there is no way to recover it.',
+    ],
+    'warn',
+  );
+  print();
+
+  const unattended = flagBool(args, 'yes', 'y');
+  let password = process.env.FUSE_MASTER_PASSWORD ?? '';
+
+  if (!password) {
+    if (!isInteractive()) {
+      failure('Run this in a terminal, or set FUSE_MASTER_PASSWORD and pass --yes.');
+      return 1;
+    }
+    password = await askPassword('Master password');
+    const again = await askPassword('Confirm the master password');
+    if (password !== again) {
+      failure('The two passwords do not match');
+      return 1;
+    }
+  }
+
+  if (password.length < 8) {
+    failure('Use at least 8 characters');
+    return 1;
+  }
+
+  const strength = passwordStrength(password);
+  if (strength.score <= 1 && !unattended && isInteractive()) {
+    warn(`That password is ${strength.label.toLowerCase()}`, strength.suggestions[0]);
+    const carryOn = await confirm('Use it anyway?', false);
+    if (!carryOn) {
+      info('Nothing was created');
+      return 0;
+    }
+  }
+
+  let hint = flagString(args, 'hint') ?? '';
+  if (!hint && !unattended && isInteractive()) {
+    hint = await text('Password hint, shown on the lock screen (optional)');
+  }
+
+  const seed = emptyVault();
+  if (flagBool(args, 'sample')) {
+    const workspace = createWorkspace(seed, 'My workspace');
+    const project = createProject(seed, workspace.id, 'Example project');
+    for (const name of ['development', 'staging', 'production']) {
+      const folder = createFolder(seed, project.id, null, name);
+      createFile(seed, project.id, folder.id, '.env');
+    }
+    seed.revisions = [];
+  }
+
+  mkdirSync(defaultVaultDir(), { recursive: true });
+  writeFileSync(
+    vaultPath(),
+    createVault(password, Buffer.from(JSON.stringify(seed), 'utf8'), hint.trim()),
+    { mode: 0o600 },
+  );
+
+  print();
+  success('Vault created', vaultPath());
+  keyValue([
+    ['strength', strength.label],
+    ['hint', hint.trim() || c.grey('none')],
+    ['contents', flagBool(args, 'sample') ? 'one example project' : 'empty'],
+  ]);
+  print();
+  box(
+    [
+      `${c.bold('fuse unlock')}                 ${c.grey('keep it open for this terminal')}`,
+      `${c.bold('fuse workspace add "Acme"')}   ${c.grey('start from nothing')}`,
+      `${c.bold('fuse push .env')}              ${c.grey('or bring an existing file in')}`,
+    ],
+    'info',
+  );
+  return 0;
+}
 
 export async function status(args: ParsedArgs): Promise<number> {
   const cwd = process.cwd();
@@ -39,7 +134,10 @@ export async function status(args: ParsedArgs): Promise<number> {
 
   if (!vaultExists()) {
     print();
-    warn('Open the Fuse app to create a vault, or point FUSE_HOME at an existing one.');
+    warn(
+      'There is no vault here yet',
+      'run fuse init, open the Fuse app, or point FUSE_HOME at an existing one',
+    );
     return 1;
   }
 
