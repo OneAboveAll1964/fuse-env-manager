@@ -167,6 +167,7 @@ export type AppSettings = {
   quoteMode: QuoteMode;
   confirmDestructive: boolean;
   sidebarCollapsed: boolean;
+  treeWidth: number;
   denseTable: boolean;
   sortVarsAlphabetically: boolean;
   exportIncludeSecrets: boolean;

@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import clsx from 'clsx';
 import {
+  ArrowLeft,
+  ArrowRight,
   ArrowRightLeft,
+  ArrowUp,
+  ChevronRight,
   Code2,
   Copy,
   Download,
   Eye,
   EyeOff,
   FileCode2,
+  FilePlus2,
   FolderPlus,
   Import,
   KeyRound,
@@ -17,7 +22,6 @@ import {
   Vault as VaultIcon,
 } from 'lucide-react';
 import { FORMATS, FORMAT_LABELS } from '@shared/env-types';
-import { folderPath } from '@shared/tree';
 import type { EnvFile, EnvFolder, EnvFormat, EnvVar, Project, TreeNode } from '@shared/types';
 import {
   Badge,
@@ -33,8 +37,11 @@ import {
   useConfirm,
   useToast,
 } from '@/components/ui';
-import { EnvTree, type TreeAction } from '@/components/EnvTree';
+import { EnvTree } from '@/components/EnvTree';
+import { DirectoryView } from '@/components/DirectoryView';
+import { Resizer } from '@/components/Resizer';
 import { VarTable } from '@/components/VarTable';
+import { nodeMenuItems, type TreeAction } from '@/components/nodeActions';
 import { FileDialog } from '@/components/dialogs/FileDialog';
 import { FolderDialog } from '@/components/dialogs/FolderDialog';
 import { ImportDialog } from '@/components/dialogs/ImportDialog';
@@ -44,6 +51,18 @@ import { VariableDialog } from '@/components/dialogs/VariableDialog';
 import { WorkspaceDialog } from '@/components/dialogs/WorkspaceDialog';
 import { errorMessage, getBridge } from '@/lib/bridge';
 import { pluralise } from '@/lib/format';
+import {
+  ROOT,
+  breadcrumbsFor,
+  chainTo,
+  childrenAt,
+  findNode,
+  locationExists,
+  locationOf,
+  parentLocation,
+  sameLocation,
+  type Location,
+} from '@/lib/navigation';
 import { useVault } from '@/lib/vault';
 
 type DialogState =
@@ -56,6 +75,21 @@ type DialogState =
   | { kind: 'import' }
   | { kind: 'render' }
   | { kind: 'transfer'; action: 'copy' | 'move' };
+
+function parseLocation(raw: string | null): Location {
+  if (!raw || raw === 'root') return ROOT;
+  const separator = raw.indexOf(':');
+  if (separator < 1) return ROOT;
+  const kind = raw.slice(0, separator);
+  const id = raw.slice(separator + 1);
+  if (!id) return ROOT;
+  if (kind === 'workspace' || kind === 'project' || kind === 'folder') return { kind, id };
+  return ROOT;
+}
+
+function serializeLocation(location: Location): string {
+  return location.kind === 'root' ? 'root' : `${location.kind}:${location.id}`;
+}
 
 export function VaultPage(): JSX.Element {
   const toast = useToast();
@@ -81,9 +115,16 @@ export function VaultPage(): JSX.Element {
   const [renderFormat, setRenderFormat] = useState<EnvFormat>('dotenv');
   const [rendered, setRendered] = useState('');
   const [renderMasked, setRenderMasked] = useState(false);
+  const [treeWidth, setTreeWidth] = useState(data.settings.treeWidth);
 
   const fileId = params.get('file');
   const file = fileById(fileId);
+  const location = useMemo(() => parseLocation(params.get('at')), [params]);
+
+  const history = useRef<Location[]>([location]);
+  const cursor = useRef(0);
+  const [, bumpHistory] = useState(0);
+
   const vars = useMemo(() => (file ? varsFor(file.id) : []), [file, varsFor]);
 
   const visibleVars = useMemo(() => {
@@ -102,6 +143,10 @@ export function VaultPage(): JSX.Element {
   }, [vars, filter, data.settings.sortVarsAlphabetically]);
 
   useEffect(() => {
+    setTreeWidth(data.settings.treeWidth);
+  }, [data.settings.treeWidth]);
+
+  useEffect(() => {
     setSelected([]);
     setRevealed([]);
     setFilter('');
@@ -110,6 +155,39 @@ export function VaultPage(): JSX.Element {
   useEffect(() => {
     if (file) setRenderFormat(file.format);
   }, [file]);
+
+  useEffect(() => {
+    const stack = history.current;
+    if (sameLocation(stack[cursor.current], location)) return;
+    const next = stack.slice(0, cursor.current + 1);
+    next.push(location);
+    history.current = next;
+    cursor.current = next.length - 1;
+    bumpHistory((n) => n + 1);
+  }, [location]);
+
+  const setLocationParam = useCallback(
+    (next: Location, keepFile: boolean) => {
+      setParams((prev) => {
+        const search = new URLSearchParams(prev);
+        if (next.kind === 'root') search.delete('at');
+        else search.set('at', serializeLocation(next));
+        if (!keepFile) {
+          search.delete('file');
+          search.delete('var');
+        }
+        return search;
+      });
+    },
+    [setParams],
+  );
+
+  useEffect(() => {
+    if (locationExists(tree, location)) return;
+    history.current = [ROOT];
+    cursor.current = 0;
+    setLocationParam(ROOT, false);
+  }, [tree, location, setLocationParam]);
 
   const selectFile = useCallback(
     (id: string) => {
@@ -123,12 +201,57 @@ export function VaultPage(): JSX.Element {
     [setParams],
   );
 
+  const enter = useCallback(
+    (node: TreeNode) => {
+      if (node.kind === 'file') {
+        selectFile(node.id);
+        return;
+      }
+      setLocationParam(locationOf(node), false);
+    },
+    [selectFile, setLocationParam],
+  );
+
+  const goBack = useCallback(() => {
+    if (cursor.current <= 0) return;
+    cursor.current -= 1;
+    bumpHistory((n) => n + 1);
+    setLocationParam(history.current[cursor.current], false);
+  }, [setLocationParam]);
+
+  const goForward = useCallback(() => {
+    if (cursor.current >= history.current.length - 1) return;
+    cursor.current += 1;
+    bumpHistory((n) => n + 1);
+    setLocationParam(history.current[cursor.current], false);
+  }, [setLocationParam]);
+
+  const goUp = useCallback(() => {
+    const parent = parentLocation(tree, location);
+    if (parent) setLocationParam(parent, false);
+  }, [tree, location, setLocationParam]);
+
+  const canBack = cursor.current > 0;
+  const canForward = cursor.current < history.current.length - 1;
+  const canUp = location.kind !== 'root';
+
   useEffect(() => {
     const varId = params.get('var');
     if (!varId) return;
     const variable = varById(varId);
     if (variable && variable.secret) setRevealed((prev) => [...new Set([...prev, varId])]);
   }, [params, varById]);
+
+  const saveTreeWidth = useCallback(
+    (width: number) => {
+      if (width === data.settings.treeWidth) return;
+      void getBridge()
+        .settings.save({ ...data.settings, treeWidth: width })
+        .then(setData)
+        .catch((err: unknown) => toast.error('Could not save the layout', errorMessage(err)));
+    },
+    [data.settings, setData, toast],
+  );
 
   const refreshRender = useCallback(
     async (format: EnvFormat, masked: boolean): Promise<void> => {
@@ -241,6 +364,9 @@ export function VaultPage(): JSX.Element {
           folderId: action.folderId,
         });
         return;
+      case 'open':
+        enter(action.node);
+        return;
       case 'edit':
         if (action.node.kind === 'workspace') setDialog({ kind: 'workspace', id: action.node.id });
         if (action.node.kind === 'project')
@@ -322,6 +448,9 @@ export function VaultPage(): JSX.Element {
           }));
         if (!ok) return;
         try {
+          if (sameLocation(location, locationOf(action.node))) {
+            setLocationParam(parentLocation(tree, location) ?? ROOT, false);
+          }
           if (action.node.kind === 'workspace')
             setData(await bridge.workspaces.remove(action.node.id));
           else if (action.node.kind === 'project')
@@ -354,45 +483,148 @@ export function VaultPage(): JSX.Element {
   const editingFile: EnvFile | null = dialog.kind === 'file' ? (fileById(dialog.id) ?? null) : null;
   const editingVar = dialog.kind === 'variable' ? (varById(dialog.id) ?? null) : null;
 
-  const breadcrumb = useMemo(() => {
-    if (!file) return [];
-    const project = projectById(file.projectId);
-    const workspace = project ? workspaceById(project.workspaceId) : undefined;
-    return [workspace?.name, project?.name, ...folderPath(data, file.folderId)].filter(
-      (s): s is string => Boolean(s),
-    );
-  }, [file, data, projectById, workspaceById]);
+  const listing = useMemo(() => childrenAt(tree, location), [tree, location]);
+  const currentNode = location.kind === 'root' ? null : findNode(tree, location.id);
+  const crumbs = useMemo(() => {
+    const chain = file ? chainTo(tree, file.id).slice(0, -1) : breadcrumbsFor(tree, location);
+    return chain[0]?.kind === 'workspace' ? chain.slice(1) : chain;
+  }, [tree, location, file]);
+
+  const targetProjectId = currentNode?.projectId ?? null;
+  const targetFolderId = currentNode?.kind === 'folder' ? currentNode.id : null;
 
   const secretsCount = vars.filter((v) => v.secret).length;
-  const treeNodes: TreeNode[] = tree;
+
+  const addMenu: TreeAction[] = [];
+  if (targetProjectId) {
+    addMenu.push({ kind: 'new-folder', projectId: targetProjectId, parentId: targetFolderId });
+    addMenu.push({ kind: 'new-file', projectId: targetProjectId, folderId: targetFolderId });
+  }
+
+  const breadcrumbBar = (
+    <div className="flex min-w-0 flex-wrap items-center gap-1 text-[11px]">
+      <button
+        type="button"
+        onClick={() => setLocationParam(ROOT, false)}
+        className={clsx(
+          'rounded px-1 py-0.5 font-semibold uppercase tracking-[0.12em] transition-colors',
+          crumbs.length === 0 && !file
+            ? 'text-slate-700 dark:text-slate-200'
+            : 'text-slate-400 hover:text-brand-600 dark:hover:text-brand-300',
+        )}
+      >
+        {activeWorkspace?.name ?? 'Vault'}
+      </button>
+      {crumbs.map((node) => (
+        <span key={node.id} className="flex min-w-0 items-center gap-1">
+          <ChevronRight size={11} className="shrink-0 text-slate-300 dark:text-slate-600" />
+          <button
+            type="button"
+            onClick={() => setLocationParam(locationOf(node), false)}
+            className="max-w-[180px] truncate rounded px-1 py-0.5 font-semibold uppercase tracking-[0.12em] text-slate-400 transition-colors hover:text-brand-600 dark:hover:text-brand-300"
+          >
+            {node.name}
+          </button>
+        </span>
+      ))}
+      {file && (
+        <span className="flex min-w-0 items-center gap-1">
+          <ChevronRight size={11} className="shrink-0 text-slate-300 dark:text-slate-600" />
+          <span className="mono-value truncate px-1 text-slate-700 dark:text-slate-200">
+            {file.name}
+          </span>
+        </span>
+      )}
+    </div>
+  );
+
+  const navButtons = (
+    <div className="flex shrink-0 items-center gap-0.5">
+      <IconButton
+        size="sm"
+        label="Back"
+        icon={<ArrowLeft size={14} />}
+        disabled={!canBack}
+        onClick={goBack}
+      />
+      <IconButton
+        size="sm"
+        label="Forward"
+        icon={<ArrowRight size={14} />}
+        disabled={!canForward}
+        onClick={goForward}
+      />
+      <IconButton
+        size="sm"
+        label="Up one level"
+        icon={<ArrowUp size={14} />}
+        disabled={!canUp}
+        onClick={goUp}
+      />
+    </div>
+  );
 
   return (
     <div className="flex h-full min-h-0">
-      <div className="flex w-[300px] shrink-0 flex-col border-e border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex shrink-0 items-center gap-2 border-b border-slate-100 px-3 py-2.5 dark:border-slate-800">
-          <VaultIcon size={14} className="shrink-0 text-slate-400" />
-          <span className="min-w-0 flex-1 truncate text-[12px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-            {activeWorkspace?.name ?? 'Vault'}
-          </span>
+      <div
+        style={{ width: treeWidth }}
+        className="flex shrink-0 flex-col bg-white dark:bg-slate-900"
+      >
+        <div className="flex shrink-0 items-center gap-1.5 border-b border-slate-100 px-2 py-2 dark:border-slate-800">
+          {navButtons}
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 ps-1">
+            <VaultIcon size={13} className="shrink-0 text-slate-400" />
+            <span className="min-w-0 flex-1 truncate text-[12px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
+              {currentNode?.name ?? activeWorkspace?.name ?? 'Vault'}
+            </span>
+          </div>
           <Menu
             label="Add"
-            className="h-7 w-7 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="h-7 w-7 shrink-0 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             trigger={<Plus size={15} />}
             items={[
+              ...(targetProjectId
+                ? [
+                    {
+                      key: 'folder',
+                      label: 'New folder here',
+                      icon: <FolderPlus size={14} />,
+                      onSelect: () =>
+                        setDialog({
+                          kind: 'folder',
+                          id: null,
+                          projectId: targetProjectId,
+                          parentId: targetFolderId,
+                        }),
+                    },
+                    {
+                      key: 'file',
+                      label: 'New env file here',
+                      icon: <FilePlus2 size={14} />,
+                      onSelect: () =>
+                        setDialog({
+                          kind: 'file',
+                          id: null,
+                          projectId: targetProjectId,
+                          folderId: targetFolderId,
+                        }),
+                    },
+                  ]
+                : []),
               {
                 key: 'project',
                 label: 'New project',
+                separatorBefore: Boolean(targetProjectId),
                 onSelect: () =>
                   setDialog({
                     kind: 'project',
                     id: null,
-                    workspaceId: activeWorkspace?.id ?? null,
+                    workspaceId: currentNode?.workspaceId ?? activeWorkspace?.id ?? null,
                   }),
               },
               {
                 key: 'workspace',
                 label: 'New workspace',
-                separatorBefore: true,
                 onSelect: () => setDialog({ kind: 'workspace', id: null }),
               },
             ]}
@@ -400,136 +632,174 @@ export function VaultPage(): JSX.Element {
         </div>
         <div className="min-h-0 flex-1">
           <EnvTree
-            nodes={treeNodes}
+            nodes={listing}
             selectedFileId={fileId}
+            emptyLabel={
+              location.kind === 'root' ? 'This workspace is empty' : 'There is nothing in here yet'
+            }
             onSelectFile={selectFile}
+            onEnter={enter}
             onAction={(action) => void handleTreeAction(action)}
           />
         </div>
       </div>
 
+      <Resizer
+        width={treeWidth}
+        onPreview={setTreeWidth}
+        onCommit={saveTreeWidth}
+        onReset={() => {
+          setTreeWidth(300);
+          saveTreeWidth(300);
+        }}
+      />
+
       <div className="flex min-w-0 flex-1 flex-col">
-        {!file ? (
-          <div className="flex h-full items-center justify-center p-8">
-            <EmptyState
-              icon={<FileCode2 size={20} />}
-              title={treeNodes.length === 0 ? 'This workspace is empty' : 'Select a file'}
-              description={
-                treeNodes.length === 0
-                  ? 'Create a project, then folders for each environment, then env files inside them.'
-                  : 'Pick an env file on the left to see and edit its variables.'
-              }
-              action={
-                treeNodes.length === 0 ? (
-                  <Button
-                    iconLeft={<Plus size={15} />}
-                    onClick={() =>
-                      setDialog({
-                        kind: 'project',
-                        id: null,
-                        workspaceId: activeWorkspace?.id ?? null,
-                      })
-                    }
-                  >
-                    New project
-                  </Button>
-                ) : undefined
-              }
-            />
+        <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-3 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center gap-2">
+            {breadcrumbBar}
+            <div className="flex-1" />
           </div>
-        ) : (
-          <>
-            <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-3.5 dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="label-eyebrow mb-1 truncate">{breadcrumb.join(' / ')}</div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="mono-value truncate text-[19px] font-semibold text-slate-900 dark:text-slate-100">
-                      {file.name}
-                    </h1>
-                    <Badge variant="neutral">{FORMAT_LABELS[file.format]}</Badge>
-                    {secretsCount > 0 && (
-                      <Badge variant="accent" icon={<KeyRound size={10} />}>
-                        {secretsCount}
-                      </Badge>
-                    )}
-                  </div>
-                  {file.description && (
-                    <p className="mt-1 truncate text-[12px] text-slate-500 dark:text-slate-400">
-                      {file.description}
-                    </p>
+
+          {file ? (
+            <div className="mt-1.5 flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="mono-value truncate text-[19px] font-semibold text-slate-900 dark:text-slate-100">
+                    {file.name}
+                  </h1>
+                  <Badge variant="neutral">{FORMAT_LABELS[file.format]}</Badge>
+                  {secretsCount > 0 && (
+                    <Badge variant="accent" icon={<KeyRound size={10} />}>
+                      {secretsCount}
+                    </Badge>
                   )}
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    iconLeft={<Import size={14} />}
-                    onClick={() => setDialog({ kind: 'import' })}
-                  >
-                    Import
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    iconLeft={<Code2 size={14} />}
-                    onClick={() => setDialog({ kind: 'render' })}
-                  >
-                    Preview
-                  </Button>
-                  <Button
-                    size="sm"
-                    iconLeft={<Plus size={14} />}
-                    onClick={() => setDialog({ kind: 'variable', id: null })}
-                  >
-                    Variable
-                  </Button>
-                  <Menu
-                    label="File actions"
-                    items={[
-                      {
-                        key: 'copy',
-                        label: 'Copy whole file',
-                        icon: <Copy size={14} />,
-                        onSelect: () => void copyWholeFile(),
-                      },
-                      {
-                        key: 'export',
-                        label: 'Save to disk',
-                        icon: <Download size={14} />,
-                        onSelect: () => void exportFile(),
-                      },
-                      {
-                        key: 'edit',
-                        label: 'File settings',
-                        separatorBefore: true,
-                        onSelect: () =>
-                          setDialog({
-                            kind: 'file',
-                            id: file.id,
-                            projectId: file.projectId,
-                            folderId: file.folderId,
-                          }),
-                      },
-                      {
-                        key: 'folder',
-                        label: 'New folder here',
-                        icon: <FolderPlus size={14} />,
-                        onSelect: () =>
-                          setDialog({
-                            kind: 'folder',
-                            id: null,
-                            projectId: file.projectId,
-                            parentId: file.folderId,
-                          }),
-                      },
-                    ]}
-                  />
-                </div>
+                {file.description && (
+                  <p className="mt-1 truncate text-[12px] text-slate-500 dark:text-slate-400">
+                    {file.description}
+                  </p>
+                )}
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  iconLeft={<Import size={14} />}
+                  onClick={() => setDialog({ kind: 'import' })}
+                >
+                  Import
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  iconLeft={<Code2 size={14} />}
+                  onClick={() => setDialog({ kind: 'render' })}
+                >
+                  Preview
+                </Button>
+                <Button
+                  size="sm"
+                  iconLeft={<Plus size={14} />}
+                  onClick={() => setDialog({ kind: 'variable', id: null })}
+                >
+                  Variable
+                </Button>
+                <Menu
+                  label="File actions"
+                  items={[
+                    {
+                      key: 'copy',
+                      label: 'Copy whole file',
+                      icon: <Copy size={14} />,
+                      onSelect: () => void copyWholeFile(),
+                    },
+                    {
+                      key: 'export',
+                      label: 'Save to disk',
+                      icon: <Download size={14} />,
+                      onSelect: () => void exportFile(),
+                    },
+                    {
+                      key: 'edit',
+                      label: 'File settings',
+                      separatorBefore: true,
+                      onSelect: () =>
+                        setDialog({
+                          kind: 'file',
+                          id: file.id,
+                          projectId: file.projectId,
+                          folderId: file.folderId,
+                        }),
+                    },
+                    {
+                      key: 'close',
+                      label: 'Back to the folder',
+                      onSelect: () =>
+                        setLocationParam(
+                          crumbs.length > 0 ? locationOf(crumbs[crumbs.length - 1]) : ROOT,
+                          false,
+                        ),
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
+              <h1 className="truncate font-display text-[19px] font-semibold text-slate-900 dark:text-slate-100">
+                {currentNode?.name ?? activeWorkspace?.name ?? 'Vault'}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                {targetProjectId && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      iconLeft={<FolderPlus size={14} />}
+                      onClick={() =>
+                        setDialog({
+                          kind: 'folder',
+                          id: null,
+                          projectId: targetProjectId,
+                          parentId: targetFolderId,
+                        })
+                      }
+                    >
+                      Folder
+                    </Button>
+                    <Button
+                      size="sm"
+                      iconLeft={<FilePlus2 size={14} />}
+                      onClick={() =>
+                        setDialog({
+                          kind: 'file',
+                          id: null,
+                          projectId: targetProjectId,
+                          folderId: targetFolderId,
+                        })
+                      }
+                    >
+                      Env file
+                    </Button>
+                  </>
+                )}
+                {currentNode && (
+                  <Menu
+                    label={`${currentNode.name} actions`}
+                    items={nodeMenuItems(currentNode, (action) => void handleTreeAction(action))}
+                  />
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {file ? (
+          <>
+            <div className="shrink-0 border-b border-slate-200 bg-white px-5 py-2.5 dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="w-56">
                   <Input
                     size="sm"
@@ -654,6 +924,64 @@ export function VaultPage(): JSX.Element {
               )}
             </div>
           </>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-auto">
+            {listing.length === 0 ? (
+              <EmptyState
+                icon={<FileCode2 size={20} />}
+                title={
+                  location.kind === 'root' ? 'This workspace is empty' : 'There is nothing in here'
+                }
+                description={
+                  location.kind === 'root'
+                    ? 'Create a project, then folders for each environment, then env files inside them.'
+                    : 'Add a folder or an env file to fill it.'
+                }
+                action={
+                  targetProjectId ? (
+                    <Button
+                      iconLeft={<FilePlus2 size={15} />}
+                      onClick={() =>
+                        setDialog({
+                          kind: 'file',
+                          id: null,
+                          projectId: targetProjectId,
+                          folderId: targetFolderId,
+                        })
+                      }
+                    >
+                      New env file
+                    </Button>
+                  ) : (
+                    <Button
+                      iconLeft={<Plus size={15} />}
+                      onClick={() =>
+                        setDialog({
+                          kind: 'project',
+                          id: null,
+                          workspaceId: activeWorkspace?.id ?? null,
+                        })
+                      }
+                    >
+                      New project
+                    </Button>
+                  )
+                }
+              />
+            ) : (
+              <>
+                <DirectoryView
+                  nodes={listing}
+                  selectedFileId={fileId}
+                  onOpen={enter}
+                  onAction={(action) => void handleTreeAction(action)}
+                />
+                <div className="px-6 py-3 text-[11px] text-slate-400">
+                  Double click a folder to open it, or a file to edit its variables.
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -764,7 +1092,6 @@ export function VaultPage(): JSX.Element {
             code={rendered || '# nothing to render yet'}
             title={file?.name}
             maxHeight={420}
-            className={clsx(renderMasked && 'opacity-95')}
           />
         </div>
       </Modal>

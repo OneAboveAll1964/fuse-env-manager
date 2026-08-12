@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import {
   FileCode2,
+  LogIn,
   FolderTree,
   KeyRound,
   Link2,
@@ -163,7 +164,7 @@ export function ProjectsPage(): JSX.Element {
       <PageHeader
         eyebrow={activeWorkspace.name}
         title="Projects"
-        description="Each project holds folders for its environments and the env files inside them."
+        description="Each project holds folders for its environments and the env files inside them. Double click one to open it in the vault."
         actions={
           <Button
             iconLeft={<Plus size={15} />}
@@ -229,7 +230,8 @@ export function ProjectsPage(): JSX.Element {
               <Card
                 key={project.id}
                 padding="none"
-                className="flex h-full flex-col overflow-hidden"
+                onDoubleClick={() => navigate(`/vault?at=project:${project.id}`)}
+                className="flex h-full cursor-default flex-col overflow-hidden transition-colors hover:border-brand-300 dark:hover:border-brand-800"
               >
                 <div className="flex items-start gap-3 px-5 py-4">
                   <span
@@ -254,7 +256,8 @@ export function ProjectsPage(): JSX.Element {
                       {
                         key: 'open',
                         label: 'Open in vault',
-                        onSelect: () => navigate('/vault'),
+                        icon: <LogIn size={14} />,
+                        onSelect: () => navigate(`/vault?at=project:${project.id}`),
                       },
                       {
                         key: 'edit',

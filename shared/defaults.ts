@@ -75,6 +75,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   quoteMode: 'auto',
   confirmDestructive: true,
   sidebarCollapsed: false,
+  treeWidth: 300,
   denseTable: false,
   sortVarsAlphabetically: false,
   exportIncludeSecrets: true,
