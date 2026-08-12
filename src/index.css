@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Kufi+Arabic:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: default;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+a,
+button,
+[role='button'],
+[role='tab'],
+[role='menuitem'],
+[role='option'],
+[role='switch'],
+label,
+summary {
+  cursor: default;
+}
+
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+img,
+svg,
+a {
+  -webkit-app-region: no-drag;
+  -webkit-user-drag: none;
+}
+
+body {
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #fafaf9;
+  color: #0f1419;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+html.dark body {
+  background-color: #0b1220;
+  color: #e2e8f0;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) transparent;
+}
+html.dark * {
+  scrollbar-color: rgb(51 65 85) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgb(203 213 225);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+html.dark *::-webkit-scrollbar-thumb {
+  background-color: rgb(51 65 85);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+@layer components {
+  .label-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400;
+  }
+  .display-num {
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    font-feature-settings: 'tnum', 'lnum';
+  }
+  .rtl-text {
+    direction: rtl;
+    text-align: right;
+    font-family: 'Noto Kufi Arabic', 'Inter', Tahoma, sans-serif;
+    line-height: 1.9;
+  }
+}
+
+.app-drag {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.app-drag *:not(.app-no-drag):not(.app-no-drag *) {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+.app-no-drag,
+.app-no-drag * {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.token-chip {
+  @apply rounded bg-brand-50 px-1 py-0.5 font-mono text-[11px] font-medium text-brand-700 ring-1 ring-inset ring-brand-200 dark:bg-brand-950/50 dark:text-brand-300 dark:ring-brand-800;
+}
+
+.mono-value {
+  font-family: 'JetBrains Mono', 'Courier New', ui-monospace, monospace;
+  font-variant-ligatures: none;
+}
+
+.secret-blur {
+  filter: blur(4px);
+  transition: filter 120ms ease;
+  user-select: none;
+}
+.secret-blur:hover {
+  filter: blur(3px);
+}
