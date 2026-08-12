@@ -16,6 +16,7 @@ await build({
   platform: 'node',
   format: 'cjs',
   target: 'node20',
+  alias: { '@shared': resolve(root, 'shared') },
   sourcemap: false,
   minify: true,
   banner: { js: '#!/usr/bin/env node' },
