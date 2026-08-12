@@ -1,128 +1,173 @@
-# Fuse
+<div style="display: flex; justify-content: center; width: 100%;">
+  <img src="docs/icon-large.png" style="width: 100%; max-width: 100px;" alt="Fuse">
+</div>
 
-An encrypted environment variable manager for macOS and Windows, with a command line tool that pulls
-and pushes env files straight from any project folder.
+# Fuse - Keep your Environment Variables in One Encrypted Place
 
-Workspaces keep different companies apart. Inside a workspace you have projects, inside projects you
-have folders for each environment, and inside folders you have env files holding the variables
-themselves. Everything lives in one file on disk, encrypted with AES-256-GCM behind a master
-password.
+Every `.env` you have ever written, in one place on your machine, encrypted. Copy
+one into a new project without hunting through old folders, compare development
+against production, and put back a value you changed last week.
 
-## What is in the box
+Workspaces keep one company's work away from another's. Inside a workspace you
+have projects, inside projects you have folders for each environment, and inside
+those you have the env files themselves.
 
-- **Workspaces** so client work never mixes with your own
-- **Nested folders and env files** under each project
-- **Twenty variable types** with validation, secret masking and inline editing
-- **Fifteen formats** for import and export: `.env`, JSON, YAML, TOML, shell, Java properties,
-  xcconfig, INI, CSV, Docker env-file, Kubernetes ConfigMap and Secret, GitHub Actions, Netlify and
-  Dart defines
-- **Full change history** with value diffs and one click restore, including undoing a whole deleted
-  folder
-- **Zip import and export** of part or all of the vault, optionally encrypted with its own password
-- **A lock screen** with auto-lock on idle, sleep, blur or minimise, plus clipboard auto-clear
-- **`fuse`**, the command line companion, for macOS and Windows
+Nothing leaves your machine. There is no account, no server and no cloud. One
+encrypted file holds the lot, and only your master password opens it.
 
-## Running it
+The command line side lives in
+[fuse-env-manager-cli](https://github.com/OneAboveAll1964/fuse-env-manager-cli).
+
+## How it works
+
+The whole vault is a single file encrypted with AES-256-GCM. The key that
+encrypts it is itself encrypted with a key stretched from your master password
+through scrypt, so the password is never written to disk and changing it does not
+re-encrypt everything.
+
+If you ask Fuse to remember the device, that key is handed to the system keychain
+instead, which is Keychain on macOS and DPAPI on Windows. The app and the `fuse`
+command can then open the vault without you typing anything. Forget the device in
+Settings and the password is required again.
+
+## The command line
+
+Most of the time you are not in the app, you are in a project folder. That is
+what `fuse` is for.
+
+```bash
+cd ~/code/my-new-service
+fuse pull                  # pick a file from the vault and write it here
+fuse push .env             # send this folder's file back
+fuse link                  # tie this folder to that file, so pull stops asking
+fuse run -- npm start      # run with the variables injected, nothing on disk
+fuse diff dev prod         # what is different between two environments
+```
+
+Install it from the app's **Command line** page, which writes a small launcher
+into `/usr/local/bin` on macOS or `%LOCALAPPDATA%\Fuse\bin` on Windows. It runs
+on the copy of Node inside the app, so nothing else has to be installed. On a
+machine without the app, install
+[the npm package](https://github.com/OneAboveAll1964/fuse-env-manager-cli) and
+run `fuse init` to create a vault there.
+
+While the app is open the command talks to it over a loopback socket and uses the
+session that is already unlocked. With the app closed it opens the encrypted file
+itself, asks for the master password once and caches it for fifteen minutes.
+Everything the command can do is listed on that page, each with worked examples.
+
+## Building
+
+For development:
 
 ```bash
 yarn install
 yarn dev
 ```
 
-The first launch asks you to create a master password. There is no way to recover it, so keep it
-somewhere safe.
-
-## Building
+To produce a real app:
 
 ```bash
-yarn icons        # regenerate build/icon.{png,icns,ico} from build/logo-source.png
+yarn icons        # rebuild build/icon.{png,icns,ico} from build/logo-source.png
 yarn build:mac    # dmg and zip
-yarn build:win    # nsis installer, portable and zip
-yarn build:all    # both
+yarn build:win    # installer, portable and zip
 ```
 
-`yarn build` also bundles the CLI into `dist-cli/` so the app can install it for you.
+`yarn build` bundles the command line tool into the app as well, so the Install
+button has something to install.
+
+## First run
+
+1. Open Fuse and choose a master password. There is no way to recover it, so put
+   it somewhere safe.
+2. Leave **Start with sample data** on if you would like two example workspaces to
+   look at first. Delete them whenever you like.
+3. Make a project. Fuse creates development, staging and production folders with
+   an empty `.env` in each.
+4. Paste an existing file in with **Import**, or bring one in from a project
+   folder with `fuse push .env`.
+
+## Around the app
+
+**Vault** is where you spend your time. The tree on the left and the panel on the
+right work like a file manager: double click a folder to open it and you see only
+what is inside, with breadcrumbs and back, forward and up buttons to move around.
+Double click a file and you get its variables. The divider between the two is
+draggable and remembers where you put it.
+
+**Projects** shows what is in the current workspace, and double clicking one opens
+it in the vault.
+
+**Search** looks through keys, notes and values, though never the value of
+anything marked as a secret.
+
+**History** is every change you have made, with the previous value kept. Restoring
+a deleted folder brings back everything that was in it.
+
+**Import & export** moves part or all of the vault as a single zip, encrypted with
+its own password if it holds secrets.
+
+## Formats
+
+Fuse reads and writes `.env`, JSON, YAML, TOML, shell exports, Java properties,
+xcconfig, INI, CSV, Docker env-files, Kubernetes ConfigMaps and Secrets, GitHub
+Actions blocks, Netlify commands and Dart defines.
+
+The format is detected when you import and taken from the file's own setting when
+you export, and either can be overridden. Quoted values with spaces, inline
+comments, multiline values and commented-out lines all survive the round trip.
+
+## Settings
+
+**Automatic locking.** After a period of inactivity, and optionally when the
+computer sleeps, when the window is minimised, or the moment Fuse loses focus.
+The strictest option locks as soon as you click another app.
+
+**Secrets.** Whether they are masked in lists, whether they go into quick exports,
+and how long a copied value stays on the clipboard before Fuse wipes it.
+
+**History.** How long entries are kept and how many. Turning it off means nothing
+can be restored.
+
+**Editor.** The format new files start as, whether values are quoted when written,
+and whether variables sort alphabetically or keep the order you added them in. The
+settings that change how something looks show you a live preview.
 
 ## Where things live
 
-| Platform | Vault folder                         |
-| -------- | ------------------------------------ |
-| macOS    | `~/Library/Application Support/Fuse` |
-| Windows  | `%APPDATA%\Fuse`                     |
-| Linux    | `~/.config/Fuse`                     |
+| Platform | Vault folder |
+| --- | --- |
+| macOS | `~/Library/Application Support/Fuse` |
+| Windows | `%APPDATA%\Fuse` |
+| Linux | `~/.config/Fuse` |
 
-Set `FUSE_HOME` to point both the app and the CLI somewhere else.
+`FUSE_HOME` points both the app and the command somewhere else.
 
-| File             | What it holds                                                                  |
-| ---------------- | ------------------------------------------------------------------------------ |
-| `vault.fuse`     | The whole vault, encrypted                                                     |
-| `vault.fuse.bak` | The previous version, kept on every write                                      |
-| `device.key`     | The data key sealed by the system keychain, only if you asked to be remembered |
-| `bridge.json`    | Loopback port and token, written while the app is open                         |
-| `session.json`   | The CLI's cached session                                                       |
+`vault.fuse` is the encrypted vault and `vault.fuse.bak` is the version before the
+last write. `device.key` only exists if you asked to be remembered. `bridge.json`
+holds the loopback port and token while the app is open, and `session.json` is the
+command line's cached session. All of them are written so that only your account
+can read them.
 
-## Security
+## If something is not right
 
-The master password is stretched with scrypt into a key encryption key, which wraps a random data
-key. The data key encrypts the vault body with AES-256-GCM. The password itself is never written to
-disk.
+- **You have forgotten the master password.** There is nothing anyone can do. That
+  is the point of it. Restore from a zip export if you have one.
+- **The `fuse` command is not found.** Install it from the Command line page, then
+  open a new terminal. On Windows the folder it goes into may need adding to your
+  PATH; the page tells you if it does.
+- **The command asks for a password while the app is open.** The bridge is off, or
+  the app is locked. Both are shown by `fuse status`.
+- **A pull says the file already exists.** It shows you the difference first and
+  asks whether to overwrite, merge or keep a backup. Pass `--yes` in a script to
+  take the overwrite.
+- **Something is missing after an import.** Imports never delete. Choose **Replace**
+  rather than **Merge** if you meant the archive to win.
 
-If you ask Fuse to remember the device, the data key is stored through the system keychain, which is
-Keychain on macOS and DPAPI on Windows, so the app and the CLI can open the vault without typing.
-Forget the device from Settings and the password is required again.
+## Licence
 
-While the app is open it runs a small server bound to `127.0.0.1` so the CLI can use the unlocked
-session. Requests need a bearer token from `bridge.json`, which is written with `0600` permissions,
-and requests carrying an `Origin` header are refused so a web page cannot reach it. Turn the bridge
-off in Settings and the CLI opens the vault itself instead.
+MIT with an attribution clause. See [LICENSE](LICENSE). You are free to use,
+change and redistribute Fuse, including in your own products, as long as you
+credit the original author somewhere a user or reader can find it.
 
-## The command line tool
-
-Install it from the app's **Command line** page, which writes a small launcher into `/usr/local/bin`
-on macOS or a `fuse.cmd` under `%LOCALAPPDATA%\Fuse\bin` on Windows. It uses the copy of Node inside
-the app, so nothing else is needed.
-
-```bash
-cd ~/code/my-new-service
-fuse pull                  # pick a file in the vault and write it here
-fuse push .env             # send this folder's file back into the vault
-fuse link                  # tie this folder to that file, then pull stops asking
-fuse run -- npm start      # run a command with the variables injected
-fuse diff dev prod         # compare two environments
-fuse --help                # every command
-```
-
-It is also published on its own from
-[`fuse-env-manager-cli`](../fuse-env-manager-cli), for machines that do not have the app installed.
-
-## Layout
-
-```
-electron/     main process: vault store, crypto, history, zip, CLI bridge, IPC
-shared/       domain model, env format codecs, vault encryption, tree helpers
-src/          React renderer: side navigation, vault browser, dialogs, pages
-cli/          the fuse command, bundled into the app and synced to its own package
-scripts/      build, icon generation and CLI sync
-build/        icon sources and generated icons
-```
-
-`yarn sync:cli` copies `cli/src` and `shared` into the sibling `fuse-env-manager-cli` repository so
-the published package and the bundled one never drift apart.
-
-## Languages
-
-English is the only dictionary shipped today. `src/i18n` holds the provider, the dictionary and the
-language registry, and `tailwindcss-rtl` is already wired up, so adding a language means adding a
-dictionary and an entry in `LANGUAGES`.
-
-## Commands
-
-| Command          | What it does                                     |
-| ---------------- | ------------------------------------------------ |
-| `yarn dev`       | Vite and Electron together with hot reload       |
-| `yarn typecheck` | Type check every workspace                       |
-| `yarn lint`      | ESLint                                           |
-| `yarn format`    | Prettier                                         |
-| `yarn icons`     | Rebuild the app icons                            |
-| `yarn build:cli` | Bundle the CLI into `dist-cli/`                  |
-| `yarn sync:cli`  | Copy the CLI sources into the standalone package |
+Made by [OneAboveAll1964](https://github.com/OneAboveAll1964).
