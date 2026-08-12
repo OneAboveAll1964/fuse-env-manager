@@ -199,12 +199,15 @@ export async function status(args: ParsedArgs): Promise<number> {
       }
     } else {
       const projectId = projectForDirectory(data, cwd);
+      print();
       if (projectId) {
-        print();
         info(
           'This folder belongs to',
           data.projects.find((p) => p.id === projectId)?.name ?? 'a project',
         );
+        info('Tie it to one environment with', 'fuse link');
+      } else {
+        info('This folder is not linked', 'link it with fuse link');
       }
     }
   } catch (err) {

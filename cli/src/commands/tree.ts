@@ -6,7 +6,7 @@ import {
   varsOf,
   workspacesOf,
 } from '@shared/tree';
-import type { EnvFile, Id, VaultData } from '@shared/types';
+import type { EnvFile, Id, Project, VaultData } from '@shared/types';
 import { connect } from '../core/client';
 import {
   copyFile,
@@ -127,6 +127,33 @@ async function resolveTarget(
   return found.find((item) => `${item.kind}:${item.id}` === picked) ?? null;
 }
 
+async function resolveProject(data: VaultData, args: ParsedArgs): Promise<Project | null> {
+  const spec = flagString(args, 'project');
+  if (spec) {
+    const found = findProject(data, spec);
+    if (!found) {
+      failure(`No project matched "${spec}"`);
+      info('Available', data.projects.map((p) => p.name).join(', ') || 'none yet');
+      return null;
+    }
+    return found;
+  }
+  const workspace = await pickWorkspace(data);
+  if (!workspace) {
+    failure('Create a workspace first');
+    return null;
+  }
+  const project = await pickProject(data, workspace.id);
+  if (!project) {
+    failure('Create a project first');
+    if (!isInteractive() && data.projects.length > 1) {
+      info('Or name one with', '--project "Storefront API"');
+    }
+    return null;
+  }
+  return project;
+}
+
 export async function workspaceCommand(args: ParsedArgs): Promise<number> {
   const client = await connect({ preferDirect: flagBool(args, 'direct') });
   const action = args.positional[0] ?? 'ls';
@@ -196,8 +223,10 @@ export async function projectCommand(args: ParsedArgs): Promise<number> {
       failure('Give a name: fuse project add "Storefront API"');
       return 1;
     }
-    const withFolders =
-      flagBool(args, 'yes', 'y') || !isInteractive()
+    const bare = flagBool(args, 'no-folders', 'bare');
+    const withFolders = bare
+      ? false
+      : flagBool(args, 'yes', 'y') || !isInteractive()
         ? true
         : await confirm('Create development, staging and production folders?', true);
 
@@ -257,16 +286,8 @@ export async function folderCommand(args: ParsedArgs): Promise<number> {
   }
 
   if (action === 'add') {
-    const workspace = await pickWorkspace(data);
-    if (!workspace) {
-      failure('Create a workspace first');
-      return 1;
-    }
-    const project = await pickProject(data, workspace.id);
-    if (!project) {
-      failure('Create a project first');
-      return 1;
-    }
+    const project = await resolveProject(data, args);
+    if (!project) return 1;
     const parent = await pickFolder(data, project.id, 'Put it inside which folder?', true);
     const name = args.positional[1] ?? (isInteractive() ? await text('Name the folder') : '');
     if (!name) {
@@ -324,17 +345,18 @@ export async function fileCommand(args: ParsedArgs): Promise<number> {
   }
 
   if (action === 'add') {
-    const workspace = await pickWorkspace(data);
-    if (!workspace) {
-      failure('Create a workspace first');
+    const project = await resolveProject(data, args);
+    if (!project) return 1;
+    const folderSpec = flagString(args, 'folder');
+    const folder = folderSpec
+      ? (data.folders.find(
+          (f) => f.projectId === project.id && f.name.toLowerCase() === folderSpec.toLowerCase(),
+        ) ?? null)
+      : await pickFolder(data, project.id);
+    if (folderSpec && !folder) {
+      failure(`${project.name} has no folder called "${folderSpec}"`);
       return 1;
     }
-    const project = await pickProject(data, workspace.id);
-    if (!project) {
-      failure('Create a project first');
-      return 1;
-    }
-    const folder = await pickFolder(data, project.id);
     const name =
       args.positional[1] ??
       (isInteractive() ? await text('Name the file', { initial: '.env' }) : '.env');

@@ -1,4 +1,7 @@
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import nodePath from 'node:path';
 import { DEFAULT_SETTINGS, STARTER_FOLDERS } from '../shared/defaults';
+import { LINK_FILE } from '../shared/paths';
 import { DEFAULT_SERIALIZE_OPTIONS, parseText, serialize } from '../shared/codecs';
 import { looksSecret, suggestType } from '../shared/env-types';
 import {
@@ -432,12 +435,59 @@ export function moveProject(id: Id, workspaceId: Id): Promise<VaultData> {
   });
 }
 
+type LinkMarker = {
+  version: 1;
+  workspace?: string;
+  project?: string;
+  environment?: string;
+  folder?: string;
+  file?: string;
+  projectId?: Id;
+  folderId?: Id;
+  fileId?: Id;
+};
+
+function markerPath(target: string): string {
+  return nodePath.join(target, LINK_FILE);
+}
+
+function readMarker(target: string): LinkMarker | null {
+  try {
+    return JSON.parse(readFileSync(markerPath(target), 'utf8')) as LinkMarker;
+  } catch {
+    return null;
+  }
+}
+
 export function linkProjectPath(id: Id, target: string): Promise<VaultData> {
   return mutate((data) => {
     const project = data.projects.find((p) => p.id === id);
     if (!project) notFound('project');
     if (!project.links.includes(target)) project.links.push(target);
     project.updatedAt = nowIso();
+
+    const workspace = data.workspaces.find((w) => w.id === project.workspaceId);
+    const existing = readMarker(target);
+    const marker: LinkMarker = {
+      version: 1,
+      workspace: workspace?.name,
+      project: project.name,
+      projectId: project.id,
+      ...(existing?.projectId === project.id
+        ? {
+            environment: existing.environment,
+            folder: existing.folder,
+            file: existing.file,
+            fileId: existing.fileId,
+            folderId: existing.folderId,
+          }
+        : {}),
+    };
+    try {
+      writeFileSync(markerPath(target), `${JSON.stringify(marker, null, 2)}\n`, 'utf8');
+    } catch {
+      /* the folder may be read only, the vault side of the link still stands */
+    }
   });
 }
 
@@ -447,6 +497,15 @@ export function unlinkProjectPath(id: Id, target: string): Promise<VaultData> {
     if (!project) notFound('project');
     project.links = project.links.filter((l) => l !== target);
     project.updatedAt = nowIso();
+
+    const marker = readMarker(target);
+    if (marker && (!marker.projectId || marker.projectId === id)) {
+      try {
+        if (existsSync(markerPath(target))) unlinkSync(markerPath(target));
+      } catch {
+        /* nothing to remove */
+      }
+    }
   });
 }
 
