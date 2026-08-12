@@ -72,6 +72,11 @@ function paint(lines: string[], previousRows: number): number {
 
 const MAX_VISIBLE = 12;
 
+function visibleCount(chrome: number): number {
+  const rows = stdout.rows && stdout.rows > 0 ? stdout.rows : 24;
+  return Math.max(3, Math.min(MAX_VISIBLE, rows - chrome));
+}
+
 export function select<T>(
   message: string,
   choices: Choice<T>[],
@@ -101,9 +106,14 @@ export function select<T>(
 
     const render = (): void => {
       const list = visible();
+      const groups = new Set(list.map((choice) => choice.group).filter(Boolean)).size;
+      const maxVisible = visibleCount(4 + groups);
       if (cursor >= list.length) cursor = Math.max(0, list.length - 1);
       if (cursor < offset) offset = cursor;
-      if (cursor >= offset + MAX_VISIBLE) offset = cursor - MAX_VISIBLE + 1;
+      if (cursor >= offset + maxVisible) offset = cursor - maxVisible + 1;
+      if (offset > Math.max(0, list.length - maxVisible)) {
+        offset = Math.max(0, list.length - maxVisible);
+      }
 
       const lines: string[] = [];
       lines.push(
@@ -112,7 +122,7 @@ export function select<T>(
         }`,
       );
 
-      const window = list.slice(offset, offset + MAX_VISIBLE);
+      const window = list.slice(offset, offset + maxVisible);
       let lastGroup: string | undefined;
       window.forEach((choice, index) => {
         const actual = offset + index;
@@ -132,11 +142,9 @@ export function select<T>(
       });
 
       if (list.length === 0) lines.push(`  ${c.grey('nothing matched')}`);
-      if (list.length > MAX_VISIBLE) {
+      if (list.length > maxVisible) {
         lines.push(
-          c.grey(
-            `  ${offset + 1}-${Math.min(offset + MAX_VISIBLE, list.length)} of ${list.length}`,
-          ),
+          c.grey(`  ${offset + 1}-${Math.min(offset + maxVisible, list.length)} of ${list.length}`),
         );
       }
       lines.push(c.grey('  ↑↓ move · enter select · esc cancel'));
@@ -234,12 +242,16 @@ export function multiselect<T>(
     const picked = new Set<T>(options.initial ?? []);
 
     const render = (): void => {
+      const maxVisible = visibleCount(4);
       if (cursor < offset) offset = cursor;
-      if (cursor >= offset + MAX_VISIBLE) offset = cursor - MAX_VISIBLE + 1;
+      if (cursor >= offset + maxVisible) offset = cursor - maxVisible + 1;
+      if (offset > Math.max(0, choices.length - maxVisible)) {
+        offset = Math.max(0, choices.length - maxVisible);
+      }
 
       const lines: string[] = [];
       lines.push(`${c.brightCyan('?')} ${c.bold(message)} ${c.grey(`(${picked.size} selected)`)}`);
-      choices.slice(offset, offset + MAX_VISIBLE).forEach((choice, index) => {
+      choices.slice(offset, offset + maxVisible).forEach((choice, index) => {
         const actual = offset + index;
         const active = actual === cursor;
         const on = picked.has(choice.value);
@@ -248,10 +260,10 @@ export function multiselect<T>(
         const label = active ? c.brightCyan(choice.label) : choice.label;
         lines.push(`${marker} ${box} ${label}${choice.hint ? c.grey(`  ${choice.hint}`) : ''}`);
       });
-      if (choices.length > MAX_VISIBLE) {
+      if (choices.length > maxVisible) {
         lines.push(
           c.grey(
-            `  ${offset + 1}-${Math.min(offset + MAX_VISIBLE, choices.length)} of ${choices.length}`,
+            `  ${offset + 1}-${Math.min(offset + maxVisible, choices.length)} of ${choices.length}`,
           ),
         );
       }
