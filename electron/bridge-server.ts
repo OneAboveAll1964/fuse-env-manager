@@ -5,13 +5,25 @@ import { bridgePath, defaultVaultDir } from '../shared/paths';
 import { searchVault } from '../shared/tree';
 import type { VaultData } from '../shared/types';
 import * as ops from './operations';
-import { isLocked, requireUnlocked, unlockWithDeviceKey, unlockWithPassword, lock } from './vault';
+import {
+  isLocked,
+  lock,
+  replaceVault,
+  requireUnlocked,
+  unlockWithDeviceKey,
+  unlockWithPassword,
+} from './vault';
 
 type Handler = (args: unknown[]) => Promise<unknown> | unknown;
 
 let server: Server | null = null;
 let token = '';
 let port: number | null = null;
+let onChange: ((data: VaultData) => void) | null = null;
+
+export function setBridgeChangeHandler(handler: (data: VaultData) => void): void {
+  onChange = handler;
+}
 
 function tokenMatches(candidate: string): boolean {
   const a = Buffer.from(candidate);
@@ -54,6 +66,11 @@ function arg<T>(args: unknown[], index: number): T {
 const handlers: Record<string, Handler> = {
   'vault.status': () => ({ locked: isLocked() }),
   'vault.data': () => requireUnlocked(),
+  'vault.replace': async (args) => {
+    const next = await replaceVault(arg<Partial<VaultData>>(args, 0));
+    onChange?.(next);
+    return { ok: true };
+  },
   'vault.lock': () => {
     lock();
     return { locked: true };

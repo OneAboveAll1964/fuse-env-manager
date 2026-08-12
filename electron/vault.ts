@@ -380,3 +380,17 @@ export function parseSnapshot(raw: string | null): Snapshot | null {
 export function seedVault(): VaultData {
   return emptyVault();
 }
+
+export function replaceVault(next: Partial<VaultData>): Promise<VaultData> {
+  const incoming = normalise(next);
+  return mutate((data) => {
+    data.version = incoming.version;
+    data.settings = incoming.settings;
+    data.workspaces = incoming.workspaces;
+    data.projects = incoming.projects;
+    data.folders = incoming.folders;
+    data.files = incoming.files;
+    data.vars = incoming.vars;
+    data.revisions = incoming.revisions;
+  });
+}

@@ -25,7 +25,7 @@ import type {
 import type { PickedFile, RenderOptions, UnlockResult } from '../shared/bridge';
 import * as ops from './operations';
 import * as archive from './archive';
-import { bridgeInfo, startBridge, stopBridge } from './bridge-server';
+import { bridgeInfo, setBridgeChangeHandler, startBridge, stopBridge } from './bridge-server';
 import { bundledCliPath, installCli, installedCliPath, uninstallCli } from './cli-install';
 import { encryptionAvailable } from './keychain';
 import {
@@ -133,6 +133,7 @@ function errorMessage(err: unknown): string {
 
 export function registerIpc(resolveWindow: () => BrowserWindow | null): void {
   getWindow = resolveWindow;
+  setBridgeChangeHandler((data) => send('vault:changed', data));
 
   ipcMain.handle('window:minimize', () => {
     getWindow()?.minimize();
