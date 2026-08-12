@@ -131,7 +131,12 @@ export function SearchPage(): JSX.Element {
                   >
                     <TD>
                       <div className="flex items-center gap-1.5">
-                        {hit.secret && <KeyRound size={11} className="shrink-0 text-amber-500" />}
+                        {hit.secret && (
+                          <KeyRound
+                            size={11}
+                            className="shrink-0 text-accent-600 dark:text-accent-400"
+                          />
+                        )}
                         <span className="mono-value text-[12.5px] font-medium text-slate-800 dark:text-slate-100">
                           {hit.key}
                         </span>

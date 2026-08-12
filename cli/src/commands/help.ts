@@ -105,7 +105,7 @@ const ENV_VARS: Entry[] = [
 export function help(): number {
   print();
   print(
-    `  ${c.bold(c.brightBlue('fuse'))} ${c.grey('— encrypted environment variables, everywhere you work')}`,
+    `  ${c.bold(c.brightCyan('fuse'))} ${c.grey('— encrypted environment variables, everywhere you work')}`,
   );
   print();
   print(`  ${c.bold('Usage')}  ${c.grey('fuse <command> [options]')}`);
@@ -116,7 +116,7 @@ export function help(): number {
   for (const group of GROUPS) {
     print(`  ${c.bold(group.title)}`);
     for (const entry of group.entries) {
-      print(`    ${c.brightBlue(pad(entry.command, width))}${c.grey(entry.summary)}`);
+      print(`    ${c.brightCyan(pad(entry.command, width))}${c.grey(entry.summary)}`);
       if (entry.example)
         print(`    ${' '.repeat(width)}${c.grey(`${symbols.arrow} ${entry.example}`)}`);
     }

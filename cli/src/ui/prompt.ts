@@ -97,7 +97,7 @@ export function select<T>(
 
       const lines: string[] = [];
       lines.push(
-        `${c.brightBlue('?')} ${c.bold(message)}${
+        `${c.brightCyan('?')} ${c.bold(message)}${
           filterable ? c.grey(`  ${filter ? `filter: ${filter}` : 'type to filter'}`) : ''
         }`,
       );
@@ -111,11 +111,11 @@ export function select<T>(
           lastGroup = choice.group;
         }
         const active = actual === cursor;
-        const marker = active ? c.brightBlue(symbols.pointer) : ' ';
+        const marker = active ? c.brightCyan(symbols.pointer) : ' ';
         const label = choice.disabled
           ? c.grey(choice.label)
           : active
-            ? c.brightBlue(choice.label)
+            ? c.brightCyan(choice.label)
             : choice.label;
         const hint = choice.hint ? c.grey(`  ${choice.hint}`) : '';
         lines.push(`${marker} ${label}${hint}`);
@@ -149,7 +149,7 @@ export function select<T>(
       }
       const chosen = choices.find((choice) => choice.value === value);
       stdout.write(
-        `${c.green(symbols.tick)} ${c.bold(message)} ${c.grey(symbols.arrow)} ${c.brightBlue(chosen?.label ?? '')}\n`,
+        `${c.green(symbols.tick)} ${c.bold(message)} ${c.grey(symbols.arrow)} ${c.brightCyan(chosen?.label ?? '')}\n`,
       );
       resolve(value as T);
     };
@@ -232,14 +232,14 @@ export function multiselect<T>(
       if (cursor >= offset + MAX_VISIBLE) offset = cursor - MAX_VISIBLE + 1;
 
       const lines: string[] = [];
-      lines.push(`${c.brightBlue('?')} ${c.bold(message)} ${c.grey(`(${picked.size} selected)`)}`);
+      lines.push(`${c.brightCyan('?')} ${c.bold(message)} ${c.grey(`(${picked.size} selected)`)}`);
       choices.slice(offset, offset + MAX_VISIBLE).forEach((choice, index) => {
         const actual = offset + index;
         const active = actual === cursor;
         const on = picked.has(choice.value);
-        const marker = active ? c.brightBlue(symbols.pointer) : ' ';
+        const marker = active ? c.brightCyan(symbols.pointer) : ' ';
         const box = on ? c.green(symbols.checkOn) : c.grey(symbols.checkOff);
-        const label = active ? c.brightBlue(choice.label) : choice.label;
+        const label = active ? c.brightCyan(choice.label) : choice.label;
         lines.push(`${marker} ${box} ${label}${choice.hint ? c.grey(`  ${choice.hint}`) : ''}`);
       });
       if (choices.length > MAX_VISIBLE) {
@@ -294,7 +294,7 @@ export function multiselect<T>(
         clear(painted);
         stdout.write(ansi.showCursor);
         stdout.write(
-          `${c.green(symbols.tick)} ${c.bold(message)} ${c.grey(symbols.arrow)} ${c.brightBlue(`${picked.size} selected`)}\n`,
+          `${c.green(symbols.tick)} ${c.bold(message)} ${c.grey(symbols.arrow)} ${c.brightCyan(`${picked.size} selected`)}\n`,
         );
         resolve(choices.filter((choice) => picked.has(choice.value)).map((choice) => choice.value));
       }
@@ -322,7 +322,7 @@ export function text(
         ? c.grey(` (${options.placeholder})`)
         : '';
     const ask = (): void => {
-      rl.question(`${c.brightBlue('?')} ${c.bold(message)}${suffix} `, (answer) => {
+      rl.question(`${c.brightCyan('?')} ${c.bold(message)}${suffix} `, (answer) => {
         const value = answer.trim() || options.initial || '';
         const error = options.validate?.(value);
         if (error) {
@@ -346,7 +346,7 @@ export function password(message: string): Promise<string> {
   requireInteractive();
   return new Promise<string>((resolve, reject) => {
     let value = '';
-    stdout.write(`${c.brightBlue('?')} ${c.bold(message)} `);
+    stdout.write(`${c.brightCyan('?')} ${c.bold(message)} `);
     const stop = listen((key) => {
       if (key.ctrl && key.name === 'c') {
         stop();
@@ -379,7 +379,7 @@ export function confirm(message: string, initial = true): Promise<boolean> {
   requireInteractive();
   return new Promise<boolean>((resolve, reject) => {
     const hint = initial ? c.grey('(Y/n)') : c.grey('(y/N)');
-    stdout.write(`${c.brightBlue('?')} ${c.bold(message)} ${hint} `);
+    stdout.write(`${c.brightCyan('?')} ${c.bold(message)} ${hint} `);
     const stop = listen((key) => {
       const answer = (key.sequence ?? '').toLowerCase();
       if (key.ctrl && key.name === 'c') {

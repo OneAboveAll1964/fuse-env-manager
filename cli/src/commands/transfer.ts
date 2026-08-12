@@ -151,7 +151,7 @@ export async function pull(args: ParsedArgs): Promise<number> {
 
   heading('Pull', filePath(data, file.id));
   keyValue([
-    ['from', c.brightBlue(filePath(data, file.id))],
+    ['from', c.brightCyan(filePath(data, file.id))],
     ['into', c.bold(target)],
     ['format', FORMAT_LABELS[format]],
     ['variables', String(count)],

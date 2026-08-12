@@ -21,8 +21,8 @@ const TONES: Record<Tone, { gradient: string; sub: string }> = {
     sub: 'text-rose-100',
   },
   accent: {
-    gradient: 'from-accent-500 via-accent-600 to-accent-700',
-    sub: 'text-accent-50',
+    gradient: 'from-accent-600 via-accent-700 to-accent-800',
+    sub: 'text-accent-100',
   },
   ink: {
     gradient: 'from-slate-800 via-slate-900 to-slate-950',

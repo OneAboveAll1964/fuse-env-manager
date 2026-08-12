@@ -3,16 +3,16 @@ import type { Tone } from '@shared/types';
 export const TONE_CLASSES: Record<Tone, { dot: string; chip: string; bar: string; text: string }> =
   {
     brand: {
-      dot: 'bg-brand-500',
+      dot: 'bg-brand-600',
       chip: 'bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/50 dark:text-brand-300 dark:ring-brand-800',
-      bar: 'bg-brand-500',
-      text: 'text-brand-600 dark:text-brand-400',
+      bar: 'bg-brand-600',
+      text: 'text-brand-600 dark:text-brand-300',
     },
     accent: {
       dot: 'bg-accent-500',
-      chip: 'bg-accent-50 text-accent-700 ring-accent-200 dark:bg-accent-950/50 dark:text-accent-300 dark:ring-accent-800',
-      bar: 'bg-accent-500',
-      text: 'text-accent-600 dark:text-accent-400',
+      chip: 'bg-accent-50 text-accent-800 ring-accent-200 dark:bg-accent-950/50 dark:text-accent-300 dark:ring-accent-800',
+      bar: 'bg-accent-600',
+      text: 'text-accent-700 dark:text-accent-300',
     },
     emerald: {
       dot: 'bg-emerald-500',

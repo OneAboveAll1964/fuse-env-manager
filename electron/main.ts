@@ -30,7 +30,7 @@ function createMainWindow(): void {
     height: 940,
     minWidth: 1120,
     minHeight: 700,
-    backgroundColor: '#fafaf9',
+    backgroundColor: '#f6f9fc',
     icon: appIcon(),
     show: false,
     frame: false,

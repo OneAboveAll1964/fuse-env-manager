@@ -449,7 +449,7 @@ export function VaultPage(): JSX.Element {
                     </h1>
                     <Badge variant="neutral">{FORMAT_LABELS[file.format]}</Badge>
                     {secretsCount > 0 && (
-                      <Badge variant="warning" icon={<KeyRound size={10} />}>
+                      <Badge variant="accent" icon={<KeyRound size={10} />}>
                         {secretsCount}
                       </Badge>
                     )}

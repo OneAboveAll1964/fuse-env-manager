@@ -246,7 +246,9 @@ export function EnvTree({
                 {node.varCount}
               </span>
             )}
-            {node.secretCount > 0 && <KeyRound size={10} className="shrink-0 text-amber-500" />}
+            {node.secretCount > 0 && (
+              <KeyRound size={10} className="shrink-0 text-accent-600 dark:text-accent-400" />
+            )}
           </button>
           <Menu
             items={menuItems}

@@ -312,7 +312,9 @@ export function HistoryPage(): JSX.Element {
                     return (
                       <div key={row.key} className="px-4 py-2.5">
                         <div className="mono-value mb-1 flex items-center gap-1.5 text-[12px] font-medium text-slate-800 dark:text-slate-100">
-                          {secret && <KeyRound size={10} className="text-amber-500" />}
+                          {secret && (
+                            <KeyRound size={10} className="text-accent-600 dark:text-accent-400" />
+                          )}
                           {row.key}
                           {!changed && <Badge variant="neutral">unchanged</Badge>}
                         </div>

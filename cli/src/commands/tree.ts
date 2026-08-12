@@ -424,7 +424,7 @@ export async function tree(args: ParsedArgs): Promise<number> {
   heading('Vault tree', `${data.files.length} files, ${data.vars.length} variables`);
 
   for (const workspace of workspacesOf(data)) {
-    print(`  ${c.bold(c.brightBlue(workspace.name))}`);
+    print(`  ${c.bold(c.brightCyan(workspace.name))}`);
     const projects = projectsOf(data, workspace.id);
     projects.forEach((project) => {
       print(`  ${c.grey(symbols.branch)} ${c.bold(project.name)}`);

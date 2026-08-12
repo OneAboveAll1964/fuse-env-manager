@@ -62,16 +62,16 @@ body {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #fafaf9;
-  color: #0f1419;
+  background-color: #f6f9fc;
+  color: #08192b;
   transition:
     background-color 200ms ease,
     color 200ms ease;
 }
 
 html.dark body {
-  background-color: #0b1220;
-  color: #e2e8f0;
+  background-color: #061423;
+  color: #dce7f2;
 }
 
 * {

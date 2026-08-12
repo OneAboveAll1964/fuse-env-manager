@@ -123,7 +123,9 @@ export function VarTable({
 
               <TD className={clsx(cellPadding, 'w-56')}>
                 <div className="flex items-center gap-1.5">
-                  {variable.secret && <KeyRound size={11} className="shrink-0 text-amber-500" />}
+                  {variable.secret && (
+                    <KeyRound size={11} className="shrink-0 text-accent-600 dark:text-accent-400" />
+                  )}
                   <span
                     className={clsx(
                       'mono-value truncate text-[12.5px] font-medium',
@@ -187,7 +189,7 @@ export function VarTable({
 
               <TD className={cellPadding}>
                 <Badge
-                  variant={variable.secret ? 'warning' : 'neutral'}
+                  variant={variable.secret ? 'accent' : 'neutral'}
                   className="whitespace-nowrap"
                 >
                   {VAR_TYPE_LABELS[variable.type]}

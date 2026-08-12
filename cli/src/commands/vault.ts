@@ -49,7 +49,7 @@ export async function status(args: ParsedArgs): Promise<number> {
     keyValue([
       [
         'linked to',
-        c.brightBlue(
+        c.brightCyan(
           [link.link.project, link.link.folder, link.link.file].filter(Boolean).join(' / '),
         ),
       ],
@@ -207,7 +207,7 @@ export function gen(args: ParsedArgs): number {
 export function version(pkgVersion: string): number {
   box(
     [
-      `${c.bold('fuse')} ${c.brightBlue(pkgVersion)}`,
+      `${c.bold('fuse')} ${c.brightCyan(pkgVersion)}`,
       c.grey(`vault: ${vaultPath()}`),
       c.grey(`node:  ${process.version}`),
     ],

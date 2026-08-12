@@ -26,15 +26,15 @@ export function info(message: string, detail?: string): void {
 
 export function heading(title: string, subtitle?: string): void {
   print();
-  print(`${c.bold(c.brightBlue(title))}${subtitle ? c.grey(`  ${subtitle}`) : ''}`);
+  print(`${c.bold(c.brightCyan(title))}${subtitle ? c.grey(`  ${subtitle}`) : ''}`);
   print(c.grey(symbols.line.repeat(Math.min(60, Math.max(20, width(title) + 8)))));
 }
 
 export function banner(): void {
   const art = [
-    `${c.brightBlue('┌───┐')}  ${c.bold('fuse')} ${c.grey('· environment manager')}`,
-    `${c.brightBlue('│')}${c.yellow('~')}${c.brightBlue('~')}${c.yellow('~')}${c.brightBlue('│')}  ${c.grey('encrypted env vars, everywhere you work')}`,
-    `${c.brightBlue('└───┘')}`,
+    `${c.blue('┌───┐')}  ${c.bold('fuse')} ${c.grey('· environment manager')}`,
+    `${c.blue('│')}${c.brightCyan('~')}${c.blue('|')}${c.brightCyan('~')}${c.blue('│')}  ${c.grey('encrypted env vars, everywhere you work')}`,
+    `${c.blue('└───┘')}`,
   ];
   print();
   art.forEach((line) => print(`  ${line}`));

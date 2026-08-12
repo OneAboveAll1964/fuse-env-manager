@@ -295,7 +295,7 @@ export function ProjectsPage(): JSX.Element {
                     {pluralise(counts.vars, 'variable')}
                   </Badge>
                   {counts.secrets > 0 && (
-                    <Badge variant="warning" icon={<KeyRound size={11} />}>
+                    <Badge variant="accent" icon={<KeyRound size={11} />}>
                       {counts.secrets}
                     </Badge>
                   )}

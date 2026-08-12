@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import clsx from 'clsx';
 
-type Variant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'brand';
+type Variant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'brand' | 'accent';
 
 const VARIANTS: Record<Variant, string> = {
   neutral:
@@ -15,6 +15,8 @@ const VARIANTS: Record<Variant, string> = {
   info: 'bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:ring-sky-900',
   brand:
     'bg-brand-50 text-brand-700 ring-brand-200 dark:bg-brand-950/60 dark:text-brand-300 dark:ring-brand-800',
+  accent:
+    'bg-accent-50 text-accent-800 ring-accent-200 dark:bg-accent-950/50 dark:text-accent-300 dark:ring-accent-800',
 };
 
 export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {

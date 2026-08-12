@@ -49,7 +49,7 @@ export async function menu(args: ParsedArgs): Promise<number> {
       [
         'linked',
         link
-          ? c.brightBlue(
+          ? c.brightCyan(
               [link.link.project, link.link.folder, link.link.file].filter(Boolean).join(' / '),
             )
           : c.grey('this folder is not linked'),

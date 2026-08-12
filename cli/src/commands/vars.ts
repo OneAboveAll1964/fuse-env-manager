@@ -237,7 +237,7 @@ export async function list(args: ParsedArgs): Promise<number> {
   if (!spec) {
     heading('Vault');
     for (const workspace of data.workspaces) {
-      print(`  ${c.bold(c.brightBlue(workspace.name))}`);
+      print(`  ${c.bold(c.brightCyan(workspace.name))}`);
       const projects = data.projects.filter((p) => p.workspaceId === workspace.id);
       projects.forEach((project, index) => {
         const last = index === projects.length - 1;
