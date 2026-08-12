@@ -6,6 +6,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { isGeneratedNote } from '@shared/codecs';
 import { DEFAULT_SETTINGS } from '@shared/defaults';
 import { backupPath, defaultVaultDir, vaultPath } from '@shared/paths';
 import { decryptVault, encryptVault, unwrapDek, VaultError } from '@shared/vault-crypto';
@@ -35,7 +36,9 @@ function normalise(parsed: Partial<VaultData>): VaultData {
     projects: parsed.projects ?? [],
     folders: parsed.folders ?? [],
     files: parsed.files ?? [],
-    vars: parsed.vars ?? [],
+    vars: (parsed.vars ?? []).map((v) =>
+      v.note && isGeneratedNote(v.note) ? { ...v, note: '' } : v,
+    ),
     revisions: parsed.revisions ?? [],
   };
 }

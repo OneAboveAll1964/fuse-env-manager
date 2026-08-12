@@ -40,6 +40,16 @@ export const DEFAULT_SERIALIZE_OPTIONS: SerializeOptions = {
 
 const ASSIGN_RE = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_.]*)\s*=[ \t]?/;
 const MASK = '********';
+const GENERATED_NOTE = /^(?:pulled|merged|exported|synced|written)\s+from\s+fuse\b/i;
+
+export function isGeneratedNote(note: string): boolean {
+  return GENERATED_NOTE.test(note.trim());
+}
+
+function collectNote(pending: string, body: string): string {
+  if (isGeneratedNote(body)) return pending;
+  return pending ? `${pending} ${body}` : body;
+}
 
 function normaliseNewlines(text: string): string {
   return text.replace(/\r\n?/g, '\n');
@@ -204,7 +214,7 @@ function parseDotenv(text: string): ParseResult {
         enabled = false;
         work = body;
       } else {
-        pendingNote = pendingNote ? `${pendingNote} ${body}` : body;
+        pendingNote = collectNote(pendingNote, body);
         continue;
       }
     }
@@ -311,7 +321,7 @@ function parseYaml(text: string, decodeBase64: boolean): ParseResult {
     }
     if (/^\s*#/.test(line)) {
       const body = line.replace(/^\s*#+[ \t]?/, '').trim();
-      pendingNote = pendingNote ? `${pendingNote} ${body}` : body;
+      pendingNote = collectNote(pendingNote, body);
       continue;
     }
     if (/^\s*---\s*$/.test(line)) continue;
@@ -397,7 +407,7 @@ function parseToml(text: string): ParseResult {
     }
     if (trimmed.startsWith('#')) {
       const body = trimmed.replace(/^#+[ \t]?/, '');
-      pendingNote = pendingNote ? `${pendingNote} ${body}` : body;
+      pendingNote = collectNote(pendingNote, body);
       continue;
     }
     if (trimmed.startsWith('[')) continue;
@@ -462,7 +472,7 @@ function parseProperties(text: string): ParseResult {
     }
     if (/^[#!]/.test(trimmed)) {
       const body = trimmed.replace(/^[#!]+[ \t]?/, '');
-      pendingNote = pendingNote ? `${pendingNote} ${body}` : body;
+      pendingNote = collectNote(pendingNote, body);
       continue;
     }
     while (line.trimEnd().endsWith('\\') && i + 1 < lines.length) {
@@ -496,7 +506,7 @@ function parseXcconfig(text: string): ParseResult {
     }
     if (trimmed.startsWith('//')) {
       const body = trimmed.replace(/^\/\/+[ \t]?/, '');
-      pendingNote = pendingNote ? `${pendingNote} ${body}` : body;
+      pendingNote = collectNote(pendingNote, body);
       continue;
     }
     if (trimmed.startsWith('#include')) continue;
@@ -609,6 +619,7 @@ function activeEntries(entries: SerializeEntry[], options: SerializeOptions): Se
   const list = options.includeDisabled ? entries : entries.filter((e) => e.enabled);
   return list.map((e) => ({
     ...e,
+    note: isGeneratedNote(e.note) ? '' : e.note,
     value: options.maskSecrets && e.secret ? MASK : e.value,
   }));
 }

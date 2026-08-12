@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { existsSync, readFileSync, watch, type FSWatcher } from 'node:fs';
 import path from 'node:path';
+import { isGeneratedNote } from '../shared/codecs';
 import { DEFAULT_SETTINGS, VAULT_VERSION, emptyVault } from '../shared/defaults';
 import { backupPath, defaultVaultDir, vaultPath as vaultFilePath } from '../shared/paths';
 import {
@@ -149,7 +150,7 @@ function normalise(parsed: Partial<VaultData>): VaultData {
       type: v.type ?? 'string',
       secret: v.secret ?? false,
       enabled: v.enabled ?? true,
-      note: v.note ?? '',
+      note: v.note && !isGeneratedNote(v.note) ? v.note : '',
       options: v.options ?? [],
       order: Number.isFinite(v.order) ? v.order : i,
       createdAt: v.createdAt ?? nowIso(),
