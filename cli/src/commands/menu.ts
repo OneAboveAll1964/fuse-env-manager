@@ -22,6 +22,7 @@ type Action =
   | 'diff'
   | 'search'
   | 'set'
+  | 'switch'
   | 'link'
   | 'history'
   | 'restore'
@@ -106,6 +107,12 @@ export async function menu(args: ParsedArgs): Promise<number> {
           group: 'Everyday',
         },
         {
+          value: 'switch',
+          label: 'Move the focus to another environment',
+          hint: 'fuse switch',
+          group: 'Everyday',
+        },
+        {
           value: 'link',
           label: 'Link this folder to a file',
           hint: 'fuse link',
@@ -150,6 +157,9 @@ export async function menu(args: ParsedArgs): Promise<number> {
           break;
         case 'sync':
           await transfer.sync(args);
+          break;
+        case 'switch':
+          await transfer.switchFocus(args);
           break;
         case 'link':
           await transfer.link(args);

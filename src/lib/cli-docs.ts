@@ -64,12 +64,12 @@ export const COMMANDS: CommandDoc[] = [
       },
       {
         title: 'A repo that keeps every environment checked in',
-        code: 'fuse link --file "Acme/API/development/.env" --as dev.env\nfuse link --add --file "Acme/API/production/.env" --as prod.env\nfuse pull',
+        code: 'fuse link --file "Acme/API/development/.env" --as dev.env\nfuse link --add --file "Acme/API/production/.env" --as prod.env\nfuse pull --all',
         note: 'Both files are written, each from its own environment.',
       },
       {
-        title: 'Refresh just one of them',
-        code: 'fuse pull prod',
+        title: 'Refresh what you are working on',
+        code: 'fuse switch prod\nfuse pull',
       },
     ],
     flags: [
@@ -96,7 +96,7 @@ export const COMMANDS: CommandDoc[] = [
     group: 'Everyday',
     summary: 'Send a local env file into the vault',
     detail:
-      'Reads local files, works out their formats, and stores them. In a folder mapped to several environments a bare push scans every mapped file and sends each one to its own environment, with one confirmation. Conflicting keys are shown before anything is written, and you choose whether the local file wins, the vault wins, or the whole file is replaced. A destination that does not exist yet is created as it goes.',
+      'Reads a local file, works out its format, and stores it. In a folder mapped to several environments a bare push sends the focused file to its own environment; --all scans every mapped file instead. Conflicting keys are shown before anything is written, and you choose whether the local file wins, the vault wins, or the whole file is replaced. A destination that does not exist yet is created as it goes.',
     examples: [
       { title: "Send this folder's .env", code: 'cd ~/code/my-service\nfuse push .env' },
       {
@@ -139,29 +139,33 @@ export const COMMANDS: CommandDoc[] = [
     ],
   },
   {
+    name: 'switch',
+    usage: 'fuse switch [environment]',
+    group: 'Everyday',
+    summary: 'Move the focus between the files mapped in this folder',
+    detail:
+      'A folder mapped to several environments has one focused file at a time, and the bare commands — pull, push, sync, use, get, set, run — all act on it. switch moves that focus and writes nothing else. Explicit names and --env always bypass the focus, and --all hits the whole set.',
+    examples: [
+      {
+        title: 'Work on production for a while',
+        code: 'fuse switch prod\nfuse pull\nfuse set LOG_LEVEL=warn --yes\nfuse push',
+      },
+      { title: 'Back to development', code: 'fuse switch dev' },
+      { title: 'Where am I?', code: 'fuse switch --list' },
+      { title: 'checkout works too', code: 'fuse checkout prod' },
+    ],
+  },
+  {
     name: 'use',
     usage: 'fuse use [environment]',
     group: 'Everyday',
-    summary: 'Switch a linked folder between development, staging and production',
+    summary: 'Swap which environment lives inside the focused file',
     detail:
-      'Once a folder is linked, this swaps which environment it is pointing at and rewrites the local file in one step. It lists the env files in the linked project, so development, staging and production, and moves the link to the one you pick. Run it with no argument for a list to choose from, with the current one already highlighted.',
+      'Rewrites the focused local file with another environment and moves its mapping with it, so pushes keep going to the right place. In a single-file folder that is the whole switching workflow. In a multi-file folder it acts on whichever file fuse switch focused, and refuses politely if the environment you name already has its own file here.',
     examples: [
+      { title: 'Point the file at production', code: 'fuse use production' },
       { title: 'Pick from a list', code: 'fuse use' },
-      { title: 'Straight to production', code: 'fuse use production' },
-      { title: 'Prefixes are enough', code: 'fuse use prod' },
-      {
-        title: 'See what is available without switching',
-        code: 'fuse use --list',
-      },
-      {
-        title: 'In a script, overwriting the local file',
-        code: 'fuse use staging --yes',
-      },
-    ],
-    flags: [
-      ['--list', 'Show the environments and which one is current'],
-      ['--json', 'The same list, machine readable'],
-      ['--yes, -y', 'Overwrite the local file without asking'],
+      { title: 'See what is mapped here', code: 'fuse use --list' },
     ],
   },
   {
@@ -170,7 +174,7 @@ export const COMMANDS: CommandDoc[] = [
     group: 'Everyday',
     summary: 'Tie this folder to one file so pulls stop asking',
     detail:
-      'Writes a small .fuse.json here recording which environments this folder maps and which local file each one lives in. One mapping gives you the switching workflow with fuse use; add more with --add and every environment gets its own local file, so dev.env and prod.env can sit side by side. It holds no secrets, only names and ids, so it is safe to commit for the whole team.',
+      'Writes a small .fuse.json here recording which environments this folder maps, which local file each one lives in, and which of them is focused. One mapping gives you the single-file workflow with fuse use; add more with --add and every environment gets its own local file, with fuse switch moving between them. It holds no secrets, only names and ids, so it is safe to commit for the whole team.',
     examples: [
       { title: 'Link, then pull silently forever after', code: 'fuse link\nfuse pull --yes' },
       {

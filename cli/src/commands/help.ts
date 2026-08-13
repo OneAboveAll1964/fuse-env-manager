@@ -9,20 +9,25 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
     entries: [
       {
         command: 'pull [file]',
-        summary: 'Write the linked env files into this folder, or one of them by name',
+        summary: 'Write the focused env file here; a name pulls that one, --all the set',
         example: 'fuse pull --file "Acme/Storefront API/production/.env"',
       },
       { command: 'put', summary: 'Same as pull, kept as a shorthand' },
       {
         command: 'push [file]',
-        summary: 'Send a local env file into the vault',
+        summary: 'Send the focused file back to its environment; --all for the set',
         example: 'fuse push .env',
       },
-      { command: 'sync', summary: 'Compare every linked file with the vault and pick a direction' },
+      { command: 'sync', summary: 'Compare the focused file with the vault; --all for the set' },
+      {
+        command: 'switch [environment]',
+        summary: 'Move the focus between mapped files; bare commands act on it',
+        example: 'fuse switch production',
+      },
       {
         command: 'use [environment]',
-        summary: 'Switch a linked folder between development, staging and production',
-        example: 'fuse use production',
+        summary: 'Swap which environment lives inside the focused file',
+        example: 'fuse use staging',
       },
       {
         command: 'link',
