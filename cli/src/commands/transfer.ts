@@ -829,6 +829,11 @@ export async function push(args: ParsedArgs): Promise<number> {
       matchMappings(data, linkedMaps, base)[0];
     if (hit) {
       args = { ...args, flags: { ...args.flags, file: filePath(data, hit.fileId) } };
+      const local = mappingLocalName(data, hit);
+      if (!existsSync(path.join(cwd, source)) && existsSync(path.join(cwd, local))) {
+        info(`Pushing ${local}`, `it maps ${mappingLabel(data, hit)} here`);
+        source = local;
+      }
     }
   }
 
