@@ -24,6 +24,7 @@ const BOOLEAN_FLAGS = new Set([
   'no-secrets',
   'no-folders',
   'no-link',
+  'add',
   'link',
   'bare',
   'history',

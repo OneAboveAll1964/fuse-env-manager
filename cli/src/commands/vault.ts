@@ -8,7 +8,13 @@ import { filePath } from '@shared/tree';
 import { connect, unlockAndCache, vaultExists } from '../core/client';
 import { readBridgeFile, bridgeAvailable } from '../core/bridge-client';
 import { clearSession, parseDuration, sessionExpiry } from '../core/session';
-import { projectForDirectory, readLink, resolveLinkedFile } from '../core/link';
+import {
+  mappingLabel,
+  mappingLocalName,
+  projectForDirectory,
+  readLink,
+  resolvedMappings,
+} from '../core/link';
 import { listEnvironments } from './transfer';
 import { createFile, createFolder, createProject, createWorkspace } from '../core/mutations';
 import { c, symbols } from '../ui/colors';
@@ -149,7 +155,15 @@ export async function status(args: ParsedArgs): Promise<number> {
       [
         'linked to',
         c.brightCyan(
-          [link.link.project, link.link.folder, link.link.file].filter(Boolean).join(' / '),
+          [
+            link.link.project,
+            (link.link.mappings ?? [])
+              .map((m) => m.environment ?? m.file)
+              .filter(Boolean)
+              .join(', ') || [link.link.folder, link.link.file].filter(Boolean).join(' / '),
+          ]
+            .filter(Boolean)
+            .join(' / '),
         ),
       ],
       ['link file', c.grey(path.join(link.dir, '.fuse.json'))],
@@ -176,8 +190,20 @@ export async function status(args: ParsedArgs): Promise<number> {
     ]);
 
     if (link) {
-      const fileId = resolveLinkedFile(data, link.link);
-      if (fileId) {
+      const maps = resolvedMappings(data, link.link);
+      if (maps.length > 1) {
+        print();
+        success(`This folder maps ${maps.length} environments`);
+        maps.forEach((rm) => {
+          const local = mappingLocalName(data, rm);
+          const exists = existsSync(path.join(link.dir, local));
+          print(
+            `    ${c.brightCyan(mappingLabel(data, rm).padEnd(16))} ${local}${exists ? '' : c.grey('  (not pulled yet)')}`,
+          );
+        });
+        print(`  ${c.grey('refresh with')}  ${c.grey('fuse pull, or fuse pull <environment>')}`);
+      } else if (maps.length === 1) {
+        const fileId = maps[0].fileId;
         print();
         success('This folder resolves to', filePath(data, fileId));
         const projectId = data.files.find((f) => f.id === fileId)?.projectId;

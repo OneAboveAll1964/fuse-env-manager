@@ -6,7 +6,14 @@ import { filePath, folderPath, searchVault, varsOf } from '@shared/tree';
 import type { EnvFile, EnvFormat, VaultData } from '@shared/types';
 import { connect } from '../core/client';
 import { removeVars, upsertVars } from '../core/mutations';
-import { readLink, resolveLinkedFile, projectForDirectory } from '../core/link';
+import {
+  mappingLabel,
+  mappingLocalName,
+  matchMappings,
+  projectForDirectory,
+  readLink,
+  resolvedMappings,
+} from '../core/link';
 import { findFile, findFiles, pickFileGuided } from '../core/resolve';
 import { c, symbols, truncate } from '../ui/colors';
 import {
@@ -61,7 +68,37 @@ export async function resolveFile(
 
   const link = readLink(process.cwd());
   if (link) {
-    const fileId = resolveLinkedFile(data, link.link);
+    const maps = resolvedMappings(data, link.link);
+    if (maps.length > 1) {
+      const envFlag = flagString(args, 'env');
+      if (envFlag) {
+        const hits = matchMappings(data, maps, envFlag);
+        if (hits.length === 1) return data.files.find((f) => f.id === hits[0].fileId) ?? null;
+        failure(
+          hits.length === 0
+            ? `No mapped environment here matched "${envFlag}"`
+            : `"${envFlag}" matched several environments`,
+        );
+        maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+        return null;
+      }
+      if (isInteractive()) {
+        const picked = await select<string>(
+          message,
+          maps.map<Choice<string>>((rm) => ({
+            value: rm.fileId,
+            label: mappingLabel(data, rm),
+            hint: mappingLocalName(data, rm),
+          })),
+        );
+        return data.files.find((f) => f.id === picked) ?? null;
+      }
+      failure('This folder maps several environments');
+      info('Pick one with', '--env production');
+      maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+      return null;
+    }
+    const fileId = maps[0]?.fileId ?? null;
     if (fileId) return data.files.find((f) => f.id === fileId) ?? null;
   }
 

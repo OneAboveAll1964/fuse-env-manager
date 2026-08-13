@@ -13,11 +13,19 @@ import {
   createWorkspace,
 } from '../core/mutations';
 import {
+  mappingLabel,
+  mappingLocalName,
+  mappingsOf,
+  matchMappings,
   projectForDirectory,
   readLink,
   resolveLinkedFile,
+  resolvedMappings,
   writeLink,
+  writeMappings,
   type LinkFile,
+  type LinkMapping,
+  type ResolvedMapping,
 } from '../core/link';
 import {
   findFile,
@@ -77,11 +85,11 @@ function localCandidates(dir: string): string[] {
 async function chooseLocalName(
   cwd: string,
   vaultName: string,
-  link: { dir: string; link: LinkFile } | null,
+  mappedLocal: string | null,
   explicit: string | undefined,
 ): Promise<string | null> {
   if (explicit) return explicit;
-  if (link?.link.local) return link.link.local;
+  if (mappedLocal) return mappedLocal;
   if (existsSync(path.join(cwd, vaultName))) return vaultName;
 
   const candidates = localCandidates(cwd).filter((name) => name !== vaultName);
@@ -111,9 +119,139 @@ function rememberLocalName(
   fileId: string,
   localName: string,
 ): void {
-  if (!link || link.link.fileId !== fileId) return;
-  if (link.link.local === localName) return;
-  writeLink(link.dir, { ...link.link, local: localName });
+  if (!link) return;
+  const mappings = mappingsOf(link.link);
+  const index = mappings.findIndex((m) => m.fileId === fileId);
+  if (index === -1 || mappings[index].local === localName) return;
+  writeMappings(
+    link.dir,
+    link.link,
+    mappings.map((m, i) => (i === index ? { ...m, local: localName } : m)),
+  );
+}
+
+type PullRow = {
+  rm: ResolvedMapping;
+  file: EnvFile;
+  local: string;
+  target: string;
+  contents: string;
+  state: 'new' | 'same' | 'differs';
+  added: number;
+  changed: number;
+  removed: number;
+};
+
+function buildPullRows(data: VaultData, list: ResolvedMapping[], cwd: string): PullRow[] {
+  const rows: PullRow[] = [];
+  for (const rm of list) {
+    const file = data.files.find((f) => f.id === rm.fileId);
+    if (!file) continue;
+    const local = mappingLocalName(data, rm);
+    const target = path.isAbsolute(local) ? local : path.join(cwd, local);
+    const contents = renderFile(data, file, file.format);
+    const row: PullRow = {
+      rm,
+      file,
+      local,
+      target,
+      contents,
+      state: 'new',
+      added: 0,
+      changed: 0,
+      removed: 0,
+    };
+    if (existsSync(target)) {
+      const current = readFileSync(target, 'utf8');
+      if (current === contents) {
+        row.state = 'same';
+      } else {
+        row.state = 'differs';
+        const parsed = parseText(current, detectFormat(local, current));
+        const incoming = parseText(contents, file.format);
+        const currentKeys = new Map(parsed.entries.map((e) => [e.key, e.value]));
+        const nextKeys = new Map(incoming.entries.map((e) => [e.key, e.value]));
+        for (const key of new Set([...currentKeys.keys(), ...nextKeys.keys()])) {
+          const before = currentKeys.get(key);
+          const after = nextKeys.get(key);
+          if (before === after) continue;
+          if (before === undefined) row.added += 1;
+          else if (after === undefined) row.removed += 1;
+          else row.changed += 1;
+        }
+        if (row.added + row.changed + row.removed === 0) row.state = 'same';
+      }
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function pullStateLabel(row: PullRow): string {
+  if (row.state === 'same') return c.grey('up to date');
+  if (row.state === 'new') return c.green('new file');
+  const parts = [];
+  if (row.added) parts.push(c.green(`+${row.added}`));
+  if (row.changed) parts.push(c.yellow(`~${row.changed}`));
+  if (row.removed) parts.push(c.red(`-${row.removed}`));
+  return parts.join(' ');
+}
+
+async function pullMappings(
+  data: VaultData,
+  list: ResolvedMapping[],
+  args: ParsedArgs,
+): Promise<number> {
+  const cwd = process.cwd();
+  const rows = buildPullRows(data, list, cwd);
+  if (rows.length === 0) {
+    failure('None of the linked environments exist in the vault any more');
+    info('Repair the link with', 'fuse link');
+    return 1;
+  }
+
+  heading('Pull', `${rows.length} environment${rows.length === 1 ? '' : 's'} into this folder`);
+  table(
+    ['environment', 'vault file', 'local file', 'state'],
+    rows.map((row) => [
+      mappingLabel(data, row.rm),
+      c.grey(row.file.name),
+      row.local,
+      pullStateLabel(row),
+    ]),
+    [24, 20, 24, 20],
+  );
+  print();
+
+  const pending = rows.filter((row) => row.state !== 'same');
+  if (pending.length === 0) {
+    success('Everything is already up to date');
+    return 0;
+  }
+
+  const overwrites = pending.filter((row) => row.state === 'differs');
+  if (overwrites.length > 0 && !flagBool(args, 'yes', 'y')) {
+    if (!isInteractive()) {
+      failure(
+        `${overwrites.length} local file${overwrites.length === 1 ? '' : 's'} would change. Re-run with --yes.`,
+      );
+      return 1;
+    }
+    const ok = await confirm(`Overwrite ${overwrites.map((row) => row.local).join(', ')}?`, true);
+    if (!ok) {
+      info('Nothing was written');
+      return 0;
+    }
+  }
+
+  for (const row of pending) writeFileSync(row.target, row.contents, 'utf8');
+  for (const row of pending) {
+    success(
+      `Wrote ${row.local}`,
+      `${varsOf(data, row.file.id).length} variables from ${mappingLabel(data, row.rm)}`,
+    );
+  }
+  return 0;
 }
 
 async function resolveTargetFile(
@@ -148,7 +286,37 @@ async function resolveTargetFile(
 
   const linked = readLink(cwd);
   if (linked) {
-    const fileId = resolveLinkedFile(data, linked.link);
+    const maps = resolvedMappings(data, linked.link);
+    if (maps.length > 1) {
+      const envFlag = flagString(args, 'env');
+      if (envFlag) {
+        const hits = matchMappings(data, maps, envFlag);
+        if (hits.length === 1) return data.files.find((f) => f.id === hits[0].fileId) ?? null;
+        failure(
+          hits.length === 0
+            ? `No mapped environment here matched "${envFlag}"`
+            : `"${envFlag}" matched several environments`,
+        );
+        maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+        return null;
+      }
+      if (isInteractive()) {
+        const picked = await select<string>(
+          'Which environment?',
+          maps.map<Choice<string>>((rm) => ({
+            value: rm.fileId,
+            label: mappingLabel(data, rm),
+            hint: mappingLocalName(data, rm),
+          })),
+        );
+        return data.files.find((f) => f.id === picked) ?? null;
+      }
+      failure('This folder maps several environments');
+      info('Pick one with', '--env production');
+      maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+      return null;
+    }
+    const fileId = maps[0]?.fileId ?? null;
     if (fileId) {
       const file = data.files.find((f) => f.id === fileId);
       if (file) {
@@ -221,23 +389,92 @@ async function resolveTargetFile(
   return pickFileGuided(data);
 }
 
+async function mapAndPull(
+  data: VaultData,
+  found: { dir: string; link: LinkFile },
+  env: Environment,
+  args: ParsedArgs,
+): Promise<number> {
+  const file = data.files.find((f) => f.id === env.fileId);
+  if (!file) return 1;
+
+  const existing = resolvedMappings(data, found.link);
+  const taken = existing.map((rm) => mappingLocalName(data, rm));
+  const renamed = existing.some(
+    (rm) => rm.mapping.local && rm.mapping.local !== (rm.mapping.file ?? rm.mapping.local),
+  );
+  let local = flagString(args, 'as');
+  if (!local) {
+    const fallback =
+      taken.includes(file.name) || renamed
+        ? `${env.label.replace(/[^A-Za-z0-9.-]+/g, '-').toLowerCase()}.env`
+        : file.name;
+    if (isInteractive()) {
+      local = await text(`Which local file should ${env.label} live in?`, { initial: fallback });
+    } else {
+      local = fallback;
+    }
+  }
+  if (!local) return 1;
+
+  const mapping: LinkMapping = {
+    environment: env.label,
+    folder: env.folder || undefined,
+    file: file.name,
+    local,
+    fileId: file.id,
+    folderId: file.folderId ?? undefined,
+  };
+  writeMappings(found.dir, found.link, [...mappingsOf(found.link), mapping]);
+  info(`Mapped ${env.label}`, `${local} in this folder`);
+  return pullMappings(data, [{ mapping, fileId: file.id }], args);
+}
+
 export async function pull(args: ParsedArgs): Promise<number> {
   const cwd = process.cwd();
   const client = await connect({ preferDirect: flagBool(args, 'direct') });
   const data = client.data;
 
+  const found = readLink(cwd);
+  const maps = found ? resolvedMappings(data, found.link) : [];
   const bare = args.positional[0];
-  if (bare && !flagString(args, 'file', 'f')) {
-    const found = readLink(cwd);
-    const projectId = found?.link.projectId;
-    if (projectId && data.projects.some((p) => p.id === projectId)) {
-      const named = listEnvironments(data, projectId, resolveLinkedFile(data, found.link)).some(
-        (env) =>
-          env.label.toLowerCase() === bare.toLowerCase() ||
-          env.folder.toLowerCase() === bare.toLowerCase() ||
-          env.file.toLowerCase() === bare.toLowerCase(),
-      );
-      if (named) return use(args);
+
+  if (!flagString(args, 'file', 'f') && found) {
+    if (bare && maps.length > 0) {
+      const hits = matchMappings(data, maps, bare);
+      if (hits.length === 1) return pullMappings(data, hits, args);
+      if (hits.length > 1) {
+        if (!isInteractive()) {
+          failure(`"${bare}" matched ${hits.length} environments here. Be more specific.`);
+          hits.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+          return 1;
+        }
+        const picked = await select<string>(
+          `"${bare}" matched several`,
+          hits.map<Choice<string>>((rm) => ({
+            value: rm.fileId,
+            label: mappingLabel(data, rm),
+            hint: mappingLocalName(data, rm),
+          })),
+        );
+        const hit = hits.find((rm) => rm.fileId === picked);
+        return hit ? pullMappings(data, [hit], args) : 1;
+      }
+    }
+
+    if (!bare && maps.length > 1) return pullMappings(data, maps, args);
+
+    if (bare) {
+      const projectId = found.link.projectId;
+      if (projectId && data.projects.some((p) => p.id === projectId)) {
+        const environments = listEnvironments(data, projectId, maps[0]?.fileId ?? null);
+        const named = matchEnvironment(environments, bare);
+        if (named.length === 1) {
+          if (maps.length > 1) return mapAndPull(data, found, named[0], args);
+          return use(args);
+        }
+        if (named.length > 1) return use(args);
+      }
     }
   }
 
@@ -251,7 +488,11 @@ export async function pull(args: ParsedArgs): Promise<number> {
   }
 
   const linkForNames = readLink(cwd);
-  const outName = await chooseLocalName(cwd, file.name, linkForNames, flagString(args, 'as', 'o'));
+  const mappedLocal = linkForNames
+    ? (resolvedMappings(data, linkForNames.link).find((rm) => rm.fileId === file.id)?.mapping
+        .local ?? null)
+    : null;
+  const outName = await chooseLocalName(cwd, file.name, mappedLocal, flagString(args, 'as', 'o'));
   if (!outName) return 1;
   rememberLocalName(linkForNames, file.id, outName);
   const outDir = flagString(args, 'dir') ?? cwd;
@@ -390,16 +631,143 @@ function findLocalEnvFiles(dir: string): string[] {
   }
 }
 
+type PushRow = {
+  rm: ResolvedMapping;
+  file: EnvFile;
+  local: string;
+  entries: ReturnType<typeof parseText>['entries'];
+  missing: boolean;
+  added: number;
+  updated: number;
+};
+
+async function pushMappings(
+  client: Awaited<ReturnType<typeof connect>>,
+  data: VaultData,
+  list: ResolvedMapping[],
+  args: ParsedArgs,
+): Promise<number> {
+  const cwd = process.cwd();
+  const mode = (flagString(args, 'mode') as ImportMode | undefined) ?? 'merge';
+  const rows: PushRow[] = [];
+
+  for (const rm of list) {
+    const file = data.files.find((f) => f.id === rm.fileId);
+    if (!file) continue;
+    const local = mappingLocalName(data, rm);
+    const target = path.isAbsolute(local) ? local : path.join(cwd, local);
+    const row: PushRow = { rm, file, local, entries: [], missing: true, added: 0, updated: 0 };
+    if (existsSync(target)) {
+      row.missing = false;
+      const raw = readFileSync(target, 'utf8');
+      row.entries = parseText(raw, detectFormat(local, raw)).entries;
+      const current = new Map(varsOf(data, file.id).map((v) => [v.key, v.value]));
+      for (const entry of row.entries) {
+        if (!current.has(entry.key)) row.added += 1;
+        else if (current.get(entry.key) !== entry.value) row.updated += 1;
+      }
+    }
+    rows.push(row);
+  }
+
+  heading('Push', `${rows.length} environment${rows.length === 1 ? '' : 's'} from this folder`);
+  table(
+    ['environment', 'local file', 'vault file', 'state'],
+    rows.map((row) => [
+      mappingLabel(data, row.rm),
+      row.local,
+      c.grey(row.file.name),
+      row.missing
+        ? c.grey('no local file, skipped')
+        : row.added + row.updated === 0
+          ? c.grey('vault already matches')
+          : [
+              row.added ? c.green(`+${row.added}`) : '',
+              row.updated ? c.yellow(`~${row.updated}`) : '',
+            ]
+              .filter(Boolean)
+              .join(' '),
+    ]),
+    [24, 24, 20, 26],
+  );
+  print();
+
+  const pending = rows.filter((row) => !row.missing && row.added + row.updated > 0);
+  if (pending.length === 0) {
+    success('The vault already matches this folder');
+    return 0;
+  }
+
+  if (!flagBool(args, 'yes', 'y')) {
+    if (!isInteractive()) {
+      failure(
+        `${pending.length} environment${pending.length === 1 ? '' : 's'} would change in the vault. Re-run with --yes.`,
+      );
+      return 1;
+    }
+    const ok = await confirm(
+      `Update ${pending.map((row) => mappingLabel(data, row.rm)).join(', ')} in the vault?`,
+      true,
+    );
+    if (!ok) {
+      info('Nothing was pushed');
+      return 0;
+    }
+  }
+
+  const results = new Map<string, { added: number; updated: number; skipped: number }>();
+  await client.save((draft) => {
+    for (const row of pending) {
+      const outcome = upsertVars(
+        draft,
+        row.file.id,
+        row.entries.map((entry) => ({
+          key: entry.key,
+          value: entry.value,
+          note: entry.note,
+          enabled: entry.enabled,
+        })),
+        mode,
+      );
+      results.set(row.file.id, outcome);
+    }
+  });
+
+  for (const row of pending) {
+    const outcome = results.get(row.file.id);
+    success(
+      `${row.local} ${symbols.arrow} ${mappingLabel(data, row.rm)}`,
+      outcome
+        ? `${outcome.added} added, ${outcome.updated} updated, ${outcome.skipped} unchanged`
+        : undefined,
+    );
+  }
+  return 0;
+}
+
 export async function push(args: ParsedArgs): Promise<number> {
   const cwd = process.cwd();
   const client = await connect({ preferDirect: flagBool(args, 'direct') });
   let data = client.data;
 
   const linkForNames = readLink(cwd);
+  const linkedMaps = linkForNames ? resolvedMappings(data, linkForNames.link) : [];
   let source = args.positional[0] ?? flagString(args, 'source');
 
-  if (!source && linkForNames?.link.local && existsSync(path.join(cwd, linkForNames.link.local))) {
-    source = linkForNames.link.local;
+  if (!flagString(args, 'file', 'f') && linkForNames && linkedMaps.length > 1) {
+    if (!source) return pushMappings(client, data, linkedMaps, args);
+    const base = path.basename(source);
+    const hit =
+      linkedMaps.find((rm) => mappingLocalName(data, rm) === base) ??
+      matchMappings(data, linkedMaps, base)[0];
+    if (hit) {
+      args = { ...args, flags: { ...args.flags, file: filePath(data, hit.fileId) } };
+    }
+  }
+
+  if (!source && linkedMaps.length === 1) {
+    const mapped = mappingLocalName(data, linkedMaps[0]);
+    if (existsSync(path.join(cwd, mapped))) source = mapped;
   }
 
   if (!source) {
@@ -650,10 +1018,101 @@ export async function push(args: ParsedArgs): Promise<number> {
   return 0;
 }
 
+async function syncMappings(
+  client: Awaited<ReturnType<typeof connect>>,
+  data: VaultData,
+  list: ResolvedMapping[],
+  args: ParsedArgs,
+): Promise<number> {
+  const cwd = process.cwd();
+  const rows = buildPullRows(data, list, cwd);
+  const pushRows = new Map<string, { added: number; updated: number }>();
+
+  for (const rm of list) {
+    const file = data.files.find((f) => f.id === rm.fileId);
+    if (!file) continue;
+    const local = mappingLocalName(data, rm);
+    const target = path.isAbsolute(local) ? local : path.join(cwd, local);
+    if (!existsSync(target)) continue;
+    const raw = readFileSync(target, 'utf8');
+    const entries = parseText(raw, detectFormat(local, raw)).entries;
+    const current = new Map(varsOf(data, file.id).map((v) => [v.key, v.value]));
+    let added = 0;
+    let updated = 0;
+    for (const entry of entries) {
+      if (!current.has(entry.key)) added += 1;
+      else if (current.get(entry.key) !== entry.value) updated += 1;
+    }
+    pushRows.set(rm.fileId, { added, updated });
+  }
+
+  heading('Sync', `${rows.length} environments against this folder`);
+  table(
+    ['environment', 'local file', 'state'],
+    rows.map((row) => {
+      const local = pushRows.get(row.rm.fileId);
+      const localAhead = (local?.added ?? 0) + (local?.updated ?? 0);
+      const state =
+        row.state === 'new'
+          ? c.grey('no local file yet')
+          : row.state === 'same' && localAhead === 0
+            ? c.grey('in sync')
+            : [
+                row.state === 'differs'
+                  ? c.blue(`vault differs by ${row.added + row.changed + row.removed}`)
+                  : '',
+                localAhead > 0 ? c.green(`local adds ${localAhead}`) : '',
+              ]
+                .filter(Boolean)
+                .join(', ');
+      return [mappingLabel(data, row.rm), row.local, state];
+    }),
+    [24, 24, 44],
+  );
+  print();
+
+  const pending = rows.filter(
+    (row) =>
+      row.state !== 'same' ||
+      (pushRows.get(row.rm.fileId)?.added ?? 0) + (pushRows.get(row.rm.fileId)?.updated ?? 0) > 0,
+  );
+  if (pending.length === 0) {
+    success('Everything is in sync');
+    return 0;
+  }
+
+  const direction = flagString(args, 'direction') as 'pull' | 'push' | undefined;
+  if (direction === 'pull')
+    return pullMappings(data, list, { ...args, flags: { ...args.flags, yes: true } });
+  if (direction === 'push')
+    return pushMappings(client, data, list, { ...args, flags: { ...args.flags, yes: true } });
+
+  if (!isInteractive()) {
+    info('Pick a direction for all of them', '--direction pull|push, with --yes');
+    return 0;
+  }
+
+  const picked = await select<'pull' | 'push' | 'cancel'>('Which way, for all of them?', [
+    { value: 'pull', label: 'Take the vault versions', hint: 'overwrite the local files' },
+    { value: 'push', label: 'Take the local versions', hint: 'update the vault' },
+    { value: 'cancel', label: 'Cancel' },
+  ]);
+  if (picked === 'pull') return pullMappings(data, list, args);
+  if (picked === 'push') return pushMappings(client, data, list, args);
+  info('Nothing changed');
+  return 0;
+}
+
 export async function sync(args: ParsedArgs): Promise<number> {
   const cwd = process.cwd();
   const client = await connect({ preferDirect: flagBool(args, 'direct') });
   const data = client.data;
+
+  const foundSync = readLink(cwd);
+  const syncMaps = foundSync ? resolvedMappings(data, foundSync.link) : [];
+  if (!flagString(args, 'file', 'f') && !args.positional[0] && syncMaps.length > 1) {
+    return syncMappings(client, data, syncMaps, args);
+  }
 
   const file = await resolveTargetFile(data, args, cwd);
   if (!file) return 1;
@@ -842,6 +1301,30 @@ export async function use(args: ParsedArgs): Promise<number> {
     return 1;
   }
 
+  const useMaps = resolvedMappings(data, found.link);
+  if (useMaps.length > 1) {
+    heading('Environments', project?.name ?? '');
+    table(
+      ['environment', 'vault file', 'local file', 'here'],
+      useMaps.map((rm) => {
+        const file = data.files.find((f) => f.id === rm.fileId);
+        const local = mappingLocalName(data, rm);
+        const exists = existsSync(path.join(found.dir, local));
+        return [
+          mappingLabel(data, rm),
+          c.grey(file?.name ?? ''),
+          local,
+          exists ? c.green(symbols.tick) : c.grey('not pulled yet'),
+        ];
+      }),
+      [24, 20, 24, 16],
+    );
+    print();
+    info('Each environment has its own file here, so there is nothing to switch');
+    info('Refresh one with', 'fuse pull <environment>, or all of them with fuse pull');
+    return 0;
+  }
+
   if (flagBool(args, 'list') || flagBool(args, 'json')) {
     if (flagBool(args, 'json')) {
       print(JSON.stringify(environments, null, 2));
@@ -946,6 +1429,31 @@ export async function link(args: ParsedArgs): Promise<number> {
   const client = await connect({ preferDirect: flagBool(args, 'direct') });
   const data = client.data;
 
+  const existing = readLink(cwd);
+  let addMode = flagBool(args, 'add');
+  if (existing && !addMode && !flagBool(args, 'yes', 'y')) {
+    const existingMaps = resolvedMappings(data, existing.link);
+    if (existingMaps.length > 0 && isInteractive()) {
+      const already = existingMaps.map((rm) => mappingLabel(data, rm)).join(', ');
+      const what = await select<'add' | 'replace' | 'cancel'>(
+        `This folder is already linked to ${already}`,
+        [
+          {
+            value: 'add',
+            label: 'Map another environment alongside it',
+            hint: 'each gets its own local file',
+          },
+          { value: 'replace', label: 'Replace the link', hint: 'start over' },
+          { value: 'cancel', label: 'Cancel' },
+        ],
+      );
+      if (what === 'cancel') return 0;
+      addMode = what === 'add';
+    } else if (existingMaps.length > 0) {
+      info('This folder is already linked', 'replacing it; pass --add to map another environment');
+    }
+  }
+
   let file: EnvFile | null = null;
 
   const fileSpec = flagString(args, 'file', 'f');
@@ -1023,21 +1531,51 @@ export async function link(args: ParsedArgs): Promise<number> {
   const workspace = data.workspaces.find((w) => w.id === project?.workspaceId);
   const environment = environments.find((env) => env.fileId === chosen.id);
 
-  const localName = await chooseLocalName(cwd, chosen.name, null, flagString(args, 'as'));
+  const priorMappings = addMode && existing ? mappingsOf(existing.link) : [];
+  if (priorMappings.some((m) => m.fileId === chosen.id)) {
+    info('That environment is already mapped here', environment?.label ?? chosen.name);
+    return 0;
+  }
+
+  const takenLocals = existing
+    ? resolvedMappings(data, existing.link).map((rm) => mappingLocalName(data, rm))
+    : [];
+  const suggested =
+    addMode && takenLocals.includes(chosen.name)
+      ? `${(environment?.label ?? chosen.name).replace(/[^A-Za-z0-9.-]+/g, '-').toLowerCase()}.env`
+      : null;
+
+  let localName: string | null;
+  if (addMode && suggested && !flagString(args, 'as')) {
+    localName = isInteractive()
+      ? await text(`Which local file should ${environment?.label ?? chosen.name} live in?`, {
+          initial: suggested,
+        })
+      : suggested;
+  } else {
+    localName = await chooseLocalName(cwd, chosen.name, null, flagString(args, 'as'));
+  }
   if (!localName) return 1;
 
-  const target = writeLink(cwd, {
-    version: 1,
-    workspace: workspace?.name,
-    project: project.name,
+  const newMapping: LinkMapping = {
     environment: environment?.label,
     folder: folderPath(data, chosen.folderId).join('/') || undefined,
     file: chosen.name,
     local: localName,
     fileId: chosen.id,
-    projectId: chosen.projectId,
     folderId: chosen.folderId ?? undefined,
-  });
+  };
+
+  const target = writeMappings(
+    cwd,
+    {
+      version: 1,
+      workspace: workspace?.name,
+      project: project.name,
+      projectId: chosen.projectId,
+    },
+    [...priorMappings, newMapping],
+  );
 
   if (!project.links.includes(cwd)) {
     const projectId = project.id;
@@ -1048,17 +1586,21 @@ export async function link(args: ParsedArgs): Promise<number> {
   }
 
   success('Linked', path.basename(target));
+  const allMappings = [...priorMappings, newMapping];
   keyValue([
     ['project', c.brightCyan(project.name)],
-    ['on', c.bold(environment?.label ?? chosen.name)],
-    [
-      'local file',
-      `${c.bold(localName)} ${c.grey(`${symbols.arrow} ${chosen.name} in the vault`)}`,
-    ],
+    ...allMappings.map((m): [string, string] => [
+      m.fileId === chosen.id ? 'now mapped' : 'also mapped',
+      `${c.bold(m.local ?? m.file ?? '')} ${c.grey(`${symbols.arrow} ${m.environment ?? m.file ?? ''}`)}`,
+    ]),
     [
       'available',
       environments
-        .map((env) => (env.fileId === chosen.id ? c.brightCyan(env.label) : c.grey(env.label)))
+        .map((env) =>
+          allMappings.some((m) => m.fileId === env.fileId)
+            ? c.brightCyan(env.label)
+            : c.grey(env.label),
+        )
         .join('  '),
     ],
   ]);
@@ -1081,6 +1623,40 @@ export async function unlink(args: ParsedArgs): Promise<number> {
     warn('This folder is not linked');
     return 0;
   }
+
+  const name = args.positional[0];
+  if (name) {
+    const client = await connect({ preferDirect: flagBool(args, 'direct') }).catch(() => null);
+    const data = client?.data;
+    if (!data) {
+      failure('The vault could not be opened');
+      return 1;
+    }
+    const maps = resolvedMappings(data, found.link);
+    const hits = matchMappings(data, maps, name);
+    if (hits.length === 0) {
+      failure(`No mapped environment here matched "${name}"`);
+      maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+      return 1;
+    }
+    if (hits.length > 1) {
+      failure(`"${name}" matched several mapped environments. Be more specific.`);
+      hits.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+      return 1;
+    }
+    if (maps.length === 1) {
+      info('That is the only mapping here', 'removing the whole link instead');
+    } else {
+      const keep = mappingsOf(found.link).filter((m) => m.fileId !== hits[0].fileId);
+      writeMappings(found.dir, found.link, keep);
+      success(
+        `Unmapped ${mappingLabel(data, hits[0])}`,
+        `${keep.length} mapping${keep.length === 1 ? '' : 's'} left`,
+      );
+      return 0;
+    }
+  }
+
   if (!flagBool(args, 'yes', 'y') && isInteractive()) {
     const ok = await confirm(`Remove the link in ${found.dir}?`, true);
     if (!ok) return 0;
