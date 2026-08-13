@@ -161,7 +161,7 @@ export const COMMANDS: CommandDoc[] = [
     group: 'Everyday',
     summary: 'Swap which environment lives inside the focused file',
     detail:
-      'Rewrites the focused local file with another environment and moves its mapping with it, so pushes keep going to the right place. In a single-file folder that is the whole switching workflow. In a multi-file folder it acts on whichever file fuse switch focused, and refuses politely if the environment you name already has its own file here.',
+      'Rewrites the focused local file with another environment and moves its mapping with it, so pushes keep going to the right place. In a single-file folder that is the whole switching workflow. In a multi-file folder it acts on whichever file fuse switch focused, and naming an environment that already lives in another file here is fine — both hold it, with a note, until one is pointed somewhere else.',
     examples: [
       { title: 'Point the file at production', code: 'fuse use production' },
       { title: 'Pick from a list', code: 'fuse use' },

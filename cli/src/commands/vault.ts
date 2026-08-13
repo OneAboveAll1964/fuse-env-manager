@@ -199,7 +199,7 @@ export async function status(args: ParsedArgs): Promise<number> {
         maps.forEach((rm) => {
           const local = mappingLocalName(data, rm);
           const exists = existsSync(path.join(link.dir, local));
-          const current = rm.fileId === focus?.fileId;
+          const current = focus ? local === mappingLocalName(data, focus) : false;
           print(
             `  ${current ? c.green(symbols.tick) : ' '} ${
               current

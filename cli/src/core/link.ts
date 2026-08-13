@@ -25,7 +25,7 @@ export type LinkFile = {
   folderId?: Id;
   fileId?: Id;
   mappings?: LinkMapping[];
-  focus?: Id;
+  focus?: string;
   target?: string;
 };
 
@@ -129,7 +129,11 @@ function resolveOne(data: VaultData, link: LinkFile, mapping: LinkMapping): Id |
 export function focusedMapping(data: VaultData, link: LinkFile): ResolvedMapping | null {
   const maps = resolvedMappings(data, link);
   if (maps.length === 0) return null;
-  return maps.find((rm) => rm.fileId === link.focus) ?? maps[0];
+  return (
+    maps.find((rm) => link.focus !== undefined && mappingLocalName(data, rm) === link.focus) ??
+    maps.find((rm) => rm.fileId === link.focus) ??
+    maps[0]
+  );
 }
 
 export function resolvedMappings(data: VaultData, link: LinkFile): ResolvedMapping[] {
@@ -167,18 +171,22 @@ export function matchMappings(
   const term = query.trim().toLowerCase();
   if (!term) return [];
 
+  const localOf = (rm: ResolvedMapping): string => mappingLocalName(data, rm).toLowerCase();
   const fields = (rm: ResolvedMapping): string[] => {
     const file = data.files.find((f) => f.id === rm.fileId);
     return [
       mappingLabel(data, rm),
       rm.mapping.folder ?? '',
       rm.mapping.file ?? file?.name ?? '',
-      mappingLocalName(data, rm),
     ].map((s) => s.toLowerCase());
   };
 
+  const localExact = list.filter((rm) => localOf(rm) === term);
+  if (localExact.length > 0) return localExact;
   const exact = list.filter((rm) => fields(rm).includes(term));
   if (exact.length > 0) return exact;
+  const localLoose = list.filter((rm) => localOf(rm).includes(term));
+  if (localLoose.length > 0) return localLoose;
   return list.filter((rm) => fields(rm).some((f) => f.includes(term)));
 }
 

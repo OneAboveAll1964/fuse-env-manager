@@ -1285,7 +1285,7 @@ function printMappingTable(
       const file = data.files.find((f) => f.id === rm.fileId);
       const local = mappingLocalName(data, rm);
       const exists = existsSync(path.join(found.dir, local));
-      const current = rm.fileId === focus?.fileId;
+      const current = focus ? local === mappingLocalName(data, focus) : false;
       return [
         current ? c.green(symbols.tick) : ' ',
         current ? c.brightCyan(mappingLabel(data, rm)) : mappingLabel(data, rm),
@@ -1326,7 +1326,9 @@ export async function switchFocus(args: ParsedArgs): Promise<number> {
           maps.map((rm) => ({
             environment: mappingLabel(data, rm),
             local: mappingLocalName(data, rm),
-            focused: rm.fileId === current?.fileId,
+            focused: current
+              ? mappingLocalName(data, rm) === mappingLocalName(data, current)
+              : false,
           })),
           null,
           2,
@@ -1369,12 +1371,12 @@ export async function switchFocus(args: ParsedArgs): Promise<number> {
       const picked = await select<string>(
         `"${query}" matched several`,
         hits.map<Choice<string>>((rm) => ({
-          value: rm.fileId,
+          value: mappingLocalName(data, rm),
           label: mappingLabel(data, rm),
           hint: mappingLocalName(data, rm),
         })),
       );
-      target = hits.find((rm) => rm.fileId === picked) ?? null;
+      target = hits.find((rm) => mappingLocalName(data, rm) === picked) ?? null;
     } else {
       target = hits[0];
     }
@@ -1387,9 +1389,9 @@ export async function switchFocus(args: ParsedArgs): Promise<number> {
     const picked = await select<string>(
       'Which file should the focus move to?',
       maps.map<Choice<string>>((rm) => ({
-        value: rm.fileId,
+        value: mappingLocalName(data, rm),
         label:
-          rm.fileId === current?.fileId
+          current && mappingLocalName(data, rm) === mappingLocalName(data, current)
             ? `${mappingLabel(data, rm)} ${c.grey('(current)')}`
             : mappingLabel(data, rm),
         hint: mappingLocalName(data, rm),
@@ -1397,21 +1399,23 @@ export async function switchFocus(args: ParsedArgs): Promise<number> {
       {
         initial: Math.max(
           0,
-          maps.findIndex((rm) => rm.fileId === current?.fileId),
+          maps.findIndex(
+            (rm) => current && mappingLocalName(data, rm) === mappingLocalName(data, current),
+          ),
         ),
       },
     );
-    target = maps.find((rm) => rm.fileId === picked) ?? null;
+    target = maps.find((rm) => mappingLocalName(data, rm) === picked) ?? null;
   }
 
   if (!target) return 1;
 
-  if (target.fileId === current?.fileId) {
+  if (current && mappingLocalName(data, target) === mappingLocalName(data, current)) {
     info(`Already on ${mappingLabel(data, target)}`, mappingLocalName(data, target));
     return 0;
   }
 
-  writeLink(found.dir, { ...found.link, focus: target.fileId });
+  writeLink(found.dir, { ...found.link, focus: mappingLocalName(data, target) });
   success(
     `Now on ${mappingLabel(data, target)}`,
     `${mappingLocalName(data, target)} — pull, push, use, get, set and run act on it`,
@@ -1539,12 +1543,13 @@ export async function use(args: ParsedArgs): Promise<number> {
       return 0;
     }
     const elsewhere = useMaps.find(
-      (rm) => rm.fileId === target.fileId && rm.fileId !== useFocus.fileId,
+      (rm) => rm.fileId === target.fileId && rm.mapping !== useFocus.mapping,
     );
     if (elsewhere) {
-      warn(`${target.label} already lives in ${mappingLocalName(data, elsewhere)} here`);
-      info('Work on it with', `fuse switch ${target.label}`);
-      return 1;
+      info(
+        `${target.label} also lives in ${mappingLocalName(data, elsewhere)} here`,
+        'both files will hold it until one is pointed somewhere else',
+      );
     }
 
     const localName = mappingLocalName(data, useFocus);
@@ -1557,9 +1562,9 @@ export async function use(args: ParsedArgs): Promise<number> {
       folderId: file.folderId ?? undefined,
     };
     const nextMappings = mappingsOf(found.link).map((m) =>
-      m.fileId === useFocus.fileId ? retargeted : m,
+      m === useFocus.mapping ? retargeted : m,
     );
-    writeLink(found.dir, { ...found.link, mappings: nextMappings, focus: file.id });
+    writeLink(found.dir, { ...found.link, mappings: nextMappings, focus: localName });
     success(`${localName} now holds ${target.label}`, 'the mapping moved with it');
     return pullMappings(data, [{ mapping: retargeted, fileId: file.id }], {
       ...args,
