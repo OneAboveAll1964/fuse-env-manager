@@ -383,6 +383,71 @@ async function resolveTargetFile(
   return pickFileGuided(data);
 }
 
+function localStem(name: string): string {
+  let stem = name.toLowerCase();
+  if (stem.startsWith('.env.')) stem = stem.slice(5);
+  else if (stem.endsWith('.env')) stem = stem.slice(0, -4);
+  return stem.replace(/^\.+|\.+$/g, '');
+}
+
+function looksLike(label: string, name: string): boolean {
+  const stem = localStem(name);
+  if (stem.length < 3) return false;
+  const term = label.toLowerCase();
+  return term.startsWith(stem) || stem.startsWith(term);
+}
+
+async function chooseLocalForMapping(
+  cwd: string,
+  takenLocals: string[],
+  label: string,
+  vaultName: string,
+  explicit: string | undefined,
+  preferLabelName: boolean,
+): Promise<string | null> {
+  if (explicit) return explicit;
+
+  const unmapped = findLocalEnvFiles(cwd).filter((name) => !takenLocals.includes(name));
+  const matches = unmapped.filter((name) => looksLike(label, name));
+  if (matches.length === 1) {
+    info(`Using ${matches[0]}`, `it looks like ${label}; pass --as to choose differently`);
+    return matches[0];
+  }
+
+  const fallback =
+    takenLocals.includes(vaultName) || preferLabelName
+      ? `${label.replace(/[^A-Za-z0-9.-]+/g, '-').toLowerCase()}.env`
+      : vaultName;
+
+  if (!isInteractive()) {
+    if (unmapped.length > 0) {
+      warn(
+        `This folder has ${unmapped.slice(0, 3).join(', ')}`,
+        `mapping ${fallback} instead; pass --as to use one of them`,
+      );
+    }
+    return fallback;
+  }
+
+  const OTHER = '\u0000other';
+  const others = unmapped.filter((name) => !matches.includes(name));
+  const asChoice = (name: string): Choice<string> => ({
+    value: name,
+    label: `Write into ${name}`,
+    hint: 'already in this folder',
+  });
+  const picked = await select<string>(`Which local file should ${label} live in?`, [
+    ...matches.map(asChoice),
+    ...(unmapped.includes(fallback)
+      ? []
+      : [{ value: fallback, label: `Create ${fallback}` } as Choice<string>]),
+    ...others.map(asChoice),
+    { value: OTHER, label: 'Type a different name' },
+  ]);
+  if (picked === OTHER) return text('Local file name', { initial: fallback });
+  return picked;
+}
+
 async function mapAndPull(
   data: VaultData,
   found: { dir: string; link: LinkFile },
@@ -397,18 +462,14 @@ async function mapAndPull(
   const renamed = existing.some(
     (rm) => rm.mapping.local && rm.mapping.local !== (rm.mapping.file ?? rm.mapping.local),
   );
-  let local = flagString(args, 'as');
-  if (!local) {
-    const fallback =
-      taken.includes(file.name) || renamed
-        ? `${env.label.replace(/[^A-Za-z0-9.-]+/g, '-').toLowerCase()}.env`
-        : file.name;
-    if (isInteractive()) {
-      local = await text(`Which local file should ${env.label} live in?`, { initial: fallback });
-    } else {
-      local = fallback;
-    }
-  }
+  const local = await chooseLocalForMapping(
+    found.dir,
+    taken,
+    env.label,
+    file.name,
+    flagString(args, 'as'),
+    renamed,
+  );
   if (!local) return 1;
 
   const mapping: LinkMapping = {
@@ -1709,24 +1770,20 @@ export async function link(args: ParsedArgs): Promise<number> {
     return 0;
   }
 
-  const takenLocals = existing
-    ? resolvedMappings(data, existing.link).map((rm) => mappingLocalName(data, rm))
-    : [];
-  const suggested =
-    addMode && takenLocals.includes(chosen.name)
-      ? `${(environment?.label ?? chosen.name).replace(/[^A-Za-z0-9.-]+/g, '-').toLowerCase()}.env`
-      : null;
+  const existingResolved = existing ? resolvedMappings(data, existing.link) : [];
+  const takenLocals = existingResolved.map((rm) => mappingLocalName(data, rm));
+  const renamedHere = existingResolved.some(
+    (rm) => rm.mapping.local && rm.mapping.local !== (rm.mapping.file ?? rm.mapping.local),
+  );
 
-  let localName: string | null;
-  if (addMode && suggested && !flagString(args, 'as')) {
-    localName = isInteractive()
-      ? await text(`Which local file should ${environment?.label ?? chosen.name} live in?`, {
-          initial: suggested,
-        })
-      : suggested;
-  } else {
-    localName = await chooseLocalName(cwd, chosen.name, null, flagString(args, 'as'));
-  }
+  const localName = await chooseLocalForMapping(
+    cwd,
+    addMode ? takenLocals : [],
+    environment?.label ?? chosen.name,
+    chosen.name,
+    flagString(args, 'as'),
+    addMode && renamedHere,
+  );
   if (!localName) return 1;
 
   const newMapping: LinkMapping = {
