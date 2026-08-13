@@ -63,9 +63,13 @@ export const COMMANDS: CommandDoc[] = [
         code: 'fuse pull --file "Acme/API/production/.env" --yes',
       },
       {
-        title: 'Pull and remember the choice for next time',
-        code: 'fuse pull --link',
-        note: 'Writes .fuse.json here so later pulls stop asking.',
+        title: 'A repo that keeps every environment checked in',
+        code: 'fuse link --file "Acme/API/development/.env" --as dev.env\nfuse link --add --file "Acme/API/production/.env" --as prod.env\nfuse pull',
+        note: 'Both files are written, each from its own environment.',
+      },
+      {
+        title: 'Refresh just one of them',
+        code: 'fuse pull prod',
       },
     ],
     flags: [
@@ -92,7 +96,7 @@ export const COMMANDS: CommandDoc[] = [
     group: 'Everyday',
     summary: 'Send a local env file into the vault',
     detail:
-      'Reads a local file, works out its format, and stores it. Keys that already exist with a different value are shown as a diff before anything is written, and you choose whether the local file wins, the vault wins, or the whole file is replaced. If the destination does not exist yet it offers to create the workspace, project, folder and file as it goes.',
+      'Reads local files, works out their formats, and stores them. In a folder mapped to several environments a bare push scans every mapped file and sends each one to its own environment, with one confirmation. Conflicting keys are shown before anything is written, and you choose whether the local file wins, the vault wins, or the whole file is replaced. A destination that does not exist yet is created as it goes.',
     examples: [
       { title: "Send this folder's .env", code: 'cd ~/code/my-service\nfuse push .env' },
       {
@@ -166,10 +170,15 @@ export const COMMANDS: CommandDoc[] = [
     group: 'Everyday',
     summary: 'Tie this folder to one file so pulls stop asking',
     detail:
-      'Writes a small .fuse.json here recording which file in the vault this folder belongs to, and records the folder on the project as well. It holds no secrets, only names and ids, so it is safe to commit if you want the whole team pulling the same file.',
+      'Writes a small .fuse.json here recording which environments this folder maps and which local file each one lives in. One mapping gives you the switching workflow with fuse use; add more with --add and every environment gets its own local file, so dev.env and prod.env can sit side by side. It holds no secrets, only names and ids, so it is safe to commit for the whole team.',
     examples: [
       { title: 'Link, then pull silently forever after', code: 'fuse link\nfuse pull --yes' },
-      { title: 'Remove the link', code: 'fuse unlink' },
+      {
+        title: 'Map a second environment alongside',
+        code: 'fuse link --add --file "Acme/API/production/.env" --as prod.env',
+      },
+      { title: 'Unmap one environment', code: 'fuse unlink production' },
+      { title: 'Remove the whole link', code: 'fuse unlink' },
     ],
   },
   {

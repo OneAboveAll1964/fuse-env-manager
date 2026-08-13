@@ -9,7 +9,7 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
     entries: [
       {
         command: 'pull [file]',
-        summary: 'Write an env file from the vault into this folder',
+        summary: 'Write the linked env files into this folder, or one of them by name',
         example: 'fuse pull --file "Acme/Storefront API/production/.env"',
       },
       { command: 'put', summary: 'Same as pull, kept as a shorthand' },
@@ -18,7 +18,7 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
         summary: 'Send a local env file into the vault',
         example: 'fuse push .env',
       },
-      { command: 'sync', summary: 'Compare this folder with the vault and pick a direction' },
+      { command: 'sync', summary: 'Compare every linked file with the vault and pick a direction' },
       {
         command: 'use [environment]',
         summary: 'Switch a linked folder between development, staging and production',
@@ -26,10 +26,10 @@ const GROUPS: Array<{ title: string; entries: Entry[] }> = [
       },
       {
         command: 'link',
-        summary: 'Tie this folder to a project and one of its environments',
+        summary: 'Tie this folder to a project; --add maps more environments alongside',
         example: 'fuse link --project "Storefront API"',
       },
-      { command: 'unlink', summary: 'Remove the link from this folder' },
+      { command: 'unlink [env]', summary: 'Remove the link, or just one mapped environment' },
     ],
   },
   {
