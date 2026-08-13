@@ -9,6 +9,7 @@ import { connect, unlockAndCache, vaultExists } from '../core/client';
 import { readBridgeFile, bridgeAvailable } from '../core/bridge-client';
 import { clearSession, parseDuration, sessionExpiry } from '../core/session';
 import {
+  focusedMapping,
   mappingLabel,
   mappingLocalName,
   projectForDirectory,
@@ -192,16 +193,24 @@ export async function status(args: ParsedArgs): Promise<number> {
     if (link) {
       const maps = resolvedMappings(data, link.link);
       if (maps.length > 1) {
+        const focus = focusedMapping(data, link.link);
         print();
         success(`This folder maps ${maps.length} environments`);
         maps.forEach((rm) => {
           const local = mappingLocalName(data, rm);
           const exists = existsSync(path.join(link.dir, local));
+          const current = rm.fileId === focus?.fileId;
           print(
-            `    ${c.brightCyan(mappingLabel(data, rm).padEnd(16))} ${local}${exists ? '' : c.grey('  (not pulled yet)')}`,
+            `  ${current ? c.green(symbols.tick) : ' '} ${
+              current
+                ? c.brightCyan(mappingLabel(data, rm).padEnd(16))
+                : c.grey(mappingLabel(data, rm).padEnd(16))
+            } ${local}${exists ? '' : c.grey('  (not pulled yet)')}`,
           );
         });
-        print(`  ${c.grey('refresh with')}  ${c.grey('fuse pull, or fuse pull <environment>')}`);
+        print(
+          `  ${c.grey('focus with')}  ${c.grey('fuse switch <environment> — pull, push and use act on it')}`,
+        );
       } else if (maps.length === 1) {
         const fileId = maps[0].fileId;
         print();

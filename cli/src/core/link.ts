@@ -25,6 +25,7 @@ export type LinkFile = {
   folderId?: Id;
   fileId?: Id;
   mappings?: LinkMapping[];
+  focus?: Id;
   target?: string;
 };
 
@@ -123,6 +124,12 @@ function resolveOne(data: VaultData, link: LinkFile, mapping: LinkMapping): Id |
       (mapping.file ? f.name === mapping.file : true),
   );
   return file?.id ?? null;
+}
+
+export function focusedMapping(data: VaultData, link: LinkFile): ResolvedMapping | null {
+  const maps = resolvedMappings(data, link);
+  if (maps.length === 0) return null;
+  return maps.find((rm) => rm.fileId === link.focus) ?? maps[0];
 }
 
 export function resolvedMappings(data: VaultData, link: LinkFile): ResolvedMapping[] {

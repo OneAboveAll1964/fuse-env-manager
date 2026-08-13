@@ -7,8 +7,8 @@ import type { EnvFile, EnvFormat, VaultData } from '@shared/types';
 import { connect } from '../core/client';
 import { removeVars, upsertVars } from '../core/mutations';
 import {
+  focusedMapping,
   mappingLabel,
-  mappingLocalName,
   matchMappings,
   projectForDirectory,
   readLink,
@@ -82,21 +82,8 @@ export async function resolveFile(
         maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
         return null;
       }
-      if (isInteractive()) {
-        const picked = await select<string>(
-          message,
-          maps.map<Choice<string>>((rm) => ({
-            value: rm.fileId,
-            label: mappingLabel(data, rm),
-            hint: mappingLocalName(data, rm),
-          })),
-        );
-        return data.files.find((f) => f.id === picked) ?? null;
-      }
-      failure('This folder maps several environments');
-      info('Pick one with', '--env production');
-      maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
-      return null;
+      const focus = focusedMapping(data, link.link);
+      if (focus) return data.files.find((f) => f.id === focus.fileId) ?? null;
     }
     const fileId = maps[0]?.fileId ?? null;
     if (fileId) return data.files.find((f) => f.id === fileId) ?? null;

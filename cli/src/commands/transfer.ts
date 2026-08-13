@@ -13,6 +13,7 @@ import {
   createWorkspace,
 } from '../core/mutations';
 import {
+  focusedMapping,
   mappingLabel,
   mappingLocalName,
   mappingsOf,
@@ -300,21 +301,14 @@ async function resolveTargetFile(
         maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
         return null;
       }
-      if (isInteractive()) {
-        const picked = await select<string>(
-          'Which environment?',
-          maps.map<Choice<string>>((rm) => ({
-            value: rm.fileId,
-            label: mappingLabel(data, rm),
-            hint: mappingLocalName(data, rm),
-          })),
+      const focus = focusedMapping(data, linked.link);
+      if (focus) {
+        info(
+          `On ${c.bold(mappingLabel(data, focus))}`,
+          `${mappingLocalName(data, focus)} — fuse switch moves the focus`,
         );
-        return data.files.find((f) => f.id === picked) ?? null;
+        return data.files.find((f) => f.id === focus.fileId) ?? null;
       }
-      failure('This folder maps several environments');
-      info('Pick one with', '--env production');
-      maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
-      return null;
     }
     const fileId = maps[0]?.fileId ?? null;
     if (fileId) {
@@ -426,7 +420,7 @@ async function mapAndPull(
     folderId: file.folderId ?? undefined,
   };
   writeMappings(found.dir, found.link, [...mappingsOf(found.link), mapping]);
-  info(`Mapped ${env.label}`, `${local} in this folder`);
+  info(`Mapped ${env.label}`, `${local} — fuse switch ${env.label} to work on it`);
   return pullMappings(data, [{ mapping, fileId: file.id }], args);
 }
 
@@ -462,7 +456,11 @@ export async function pull(args: ParsedArgs): Promise<number> {
       }
     }
 
-    if (!bare && maps.length > 1) return pullMappings(data, maps, args);
+    if (!bare && maps.length > 1) {
+      if (flagBool(args, 'all')) return pullMappings(data, maps, args);
+      const focus = focusedMapping(data, found.link);
+      if (focus) return pullMappings(data, [focus], args);
+    }
 
     if (bare) {
       const projectId = found.link.projectId;
@@ -755,7 +753,11 @@ export async function push(args: ParsedArgs): Promise<number> {
   let source = args.positional[0] ?? flagString(args, 'source');
 
   if (!flagString(args, 'file', 'f') && linkForNames && linkedMaps.length > 1) {
-    if (!source) return pushMappings(client, data, linkedMaps, args);
+    if (!source) {
+      if (flagBool(args, 'all')) return pushMappings(client, data, linkedMaps, args);
+      const focus = focusedMapping(data, linkForNames.link);
+      return pushMappings(client, data, focus ? [focus] : linkedMaps, args);
+    }
     const base = path.basename(source);
     const hit =
       linkedMaps.find((rm) => mappingLocalName(data, rm) === base) ??
@@ -1111,7 +1113,9 @@ export async function sync(args: ParsedArgs): Promise<number> {
   const foundSync = readLink(cwd);
   const syncMaps = foundSync ? resolvedMappings(data, foundSync.link) : [];
   if (!flagString(args, 'file', 'f') && !args.positional[0] && syncMaps.length > 1) {
-    return syncMappings(client, data, syncMaps, args);
+    if (flagBool(args, 'all')) return syncMappings(client, data, syncMaps, args);
+    const focus = foundSync ? focusedMapping(data, foundSync.link) : null;
+    return syncMappings(client, data, focus ? [focus] : syncMaps, args);
   }
 
   const file = await resolveTargetFile(data, args, cwd);
@@ -1269,6 +1273,152 @@ function matchEnvironment(list: Environment[], query: string): Environment[] {
   );
 }
 
+function printMappingTable(
+  data: VaultData,
+  found: { dir: string; link: LinkFile },
+  maps: ResolvedMapping[],
+): void {
+  const focus = focusedMapping(data, found.link);
+  table(
+    ['', 'environment', 'vault file', 'local file', 'here'],
+    maps.map((rm) => {
+      const file = data.files.find((f) => f.id === rm.fileId);
+      const local = mappingLocalName(data, rm);
+      const exists = existsSync(path.join(found.dir, local));
+      const current = rm.fileId === focus?.fileId;
+      return [
+        current ? c.green(symbols.tick) : ' ',
+        current ? c.brightCyan(mappingLabel(data, rm)) : mappingLabel(data, rm),
+        c.grey(file?.name ?? ''),
+        local,
+        exists ? '' : c.grey('not pulled yet'),
+      ];
+    }),
+    [2, 22, 18, 22, 16],
+  );
+}
+
+export async function switchFocus(args: ParsedArgs): Promise<number> {
+  const cwd = process.cwd();
+  const client = await connect({ preferDirect: flagBool(args, 'direct'), quiet: true });
+  const data = client.data;
+
+  const found = readLink(cwd);
+  if (!found) {
+    failure('This folder is not linked to anything');
+    info('Link it first with', 'fuse link');
+    return 1;
+  }
+
+  const maps = resolvedMappings(data, found.link);
+  if (maps.length === 0) {
+    failure('The link in this folder points at things that no longer exist');
+    info('Repair it with', 'fuse link');
+    return 1;
+  }
+
+  const current = focusedMapping(data, found.link);
+
+  if (flagBool(args, 'list') || flagBool(args, 'json')) {
+    if (flagBool(args, 'json')) {
+      print(
+        JSON.stringify(
+          maps.map((rm) => ({
+            environment: mappingLabel(data, rm),
+            local: mappingLocalName(data, rm),
+            focused: rm.fileId === current?.fileId,
+          })),
+          null,
+          2,
+        ),
+      );
+      return 0;
+    }
+    heading('Mapped here', found.link.project ?? '');
+    printMappingTable(data, found, maps);
+    print();
+    info('Move the focus with', 'fuse switch <environment>');
+    return 0;
+  }
+
+  if (maps.length === 1) {
+    info(
+      'Only one file is mapped here',
+      `${mappingLocalName(data, maps[0])} ${symbols.arrow} ${mappingLabel(data, maps[0])}`,
+    );
+    info('Swap the environment inside it with', 'fuse use <environment>');
+    return 0;
+  }
+
+  const query = args.positional[0];
+  let target: ResolvedMapping | null = null;
+
+  if (query) {
+    const hits = matchMappings(data, maps, query);
+    if (hits.length === 0) {
+      failure(`No mapped environment here matched "${query}"`);
+      maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+      return 1;
+    }
+    if (hits.length > 1) {
+      if (!isInteractive()) {
+        failure(`"${query}" matched several mapped environments. Be more specific.`);
+        hits.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+        return 1;
+      }
+      const picked = await select<string>(
+        `"${query}" matched several`,
+        hits.map<Choice<string>>((rm) => ({
+          value: rm.fileId,
+          label: mappingLabel(data, rm),
+          hint: mappingLocalName(data, rm),
+        })),
+      );
+      target = hits.find((rm) => rm.fileId === picked) ?? null;
+    } else {
+      target = hits[0];
+    }
+  } else {
+    if (!isInteractive()) {
+      failure('Give an environment: fuse switch production');
+      maps.forEach((rm) => print(`    ${c.grey(mappingLabel(data, rm))}`));
+      return 1;
+    }
+    const picked = await select<string>(
+      'Which file should the focus move to?',
+      maps.map<Choice<string>>((rm) => ({
+        value: rm.fileId,
+        label:
+          rm.fileId === current?.fileId
+            ? `${mappingLabel(data, rm)} ${c.grey('(current)')}`
+            : mappingLabel(data, rm),
+        hint: mappingLocalName(data, rm),
+      })),
+      {
+        initial: Math.max(
+          0,
+          maps.findIndex((rm) => rm.fileId === current?.fileId),
+        ),
+      },
+    );
+    target = maps.find((rm) => rm.fileId === picked) ?? null;
+  }
+
+  if (!target) return 1;
+
+  if (target.fileId === current?.fileId) {
+    info(`Already on ${mappingLabel(data, target)}`, mappingLocalName(data, target));
+    return 0;
+  }
+
+  writeLink(found.dir, { ...found.link, focus: target.fileId });
+  success(
+    `Now on ${mappingLabel(data, target)}`,
+    `${mappingLocalName(data, target)} — pull, push, use, get, set and run act on it`,
+  );
+  return 0;
+}
+
 export async function use(args: ParsedArgs): Promise<number> {
   const cwd = process.cwd();
   const client = await connect({ preferDirect: flagBool(args, 'direct') });
@@ -1302,27 +1452,9 @@ export async function use(args: ParsedArgs): Promise<number> {
   }
 
   const useMaps = resolvedMappings(data, found.link);
-  if (useMaps.length > 1) {
-    heading('Environments', project?.name ?? '');
-    table(
-      ['environment', 'vault file', 'local file', 'here'],
-      useMaps.map((rm) => {
-        const file = data.files.find((f) => f.id === rm.fileId);
-        const local = mappingLocalName(data, rm);
-        const exists = existsSync(path.join(found.dir, local));
-        return [
-          mappingLabel(data, rm),
-          c.grey(file?.name ?? ''),
-          local,
-          exists ? c.green(symbols.tick) : c.grey('not pulled yet'),
-        ];
-      }),
-      [24, 20, 24, 16],
-    );
-    print();
-    info('Each environment has its own file here, so there is nothing to switch');
-    info('Refresh one with', 'fuse pull <environment>, or all of them with fuse pull');
-    return 0;
+  const useFocus = useMaps.length > 1 ? focusedMapping(data, found.link) : null;
+  if (useMaps.length > 1 && (flagBool(args, 'list') || flagBool(args, 'json'))) {
+    return switchFocus(args);
   }
 
   if (flagBool(args, 'list') || flagBool(args, 'json')) {
@@ -1399,6 +1531,41 @@ export async function use(args: ParsedArgs): Promise<number> {
   if (!file) {
     failure('That env file no longer exists');
     return 1;
+  }
+
+  if (useFocus) {
+    if (target.fileId === useFocus.fileId) {
+      info(`${mappingLocalName(data, useFocus)} already holds ${mappingLabel(data, useFocus)}`);
+      return 0;
+    }
+    const elsewhere = useMaps.find(
+      (rm) => rm.fileId === target.fileId && rm.fileId !== useFocus.fileId,
+    );
+    if (elsewhere) {
+      warn(`${target.label} already lives in ${mappingLocalName(data, elsewhere)} here`);
+      info('Work on it with', `fuse switch ${target.label}`);
+      return 1;
+    }
+
+    const localName = mappingLocalName(data, useFocus);
+    const retargeted: LinkMapping = {
+      environment: target.label,
+      folder: folderPath(data, file.folderId).join('/') || undefined,
+      file: file.name,
+      local: localName,
+      fileId: file.id,
+      folderId: file.folderId ?? undefined,
+    };
+    const nextMappings = mappingsOf(found.link).map((m) =>
+      m.fileId === useFocus.fileId ? retargeted : m,
+    );
+    writeLink(found.dir, { ...found.link, mappings: nextMappings, focus: file.id });
+    success(`${localName} now holds ${target.label}`, 'the mapping moved with it');
+    return pullMappings(data, [{ mapping: retargeted, fileId: file.id }], {
+      ...args,
+      positional: [],
+      flags: { ...args.flags, yes: true },
+    });
   }
 
   const workspace = data.workspaces.find((w) => w.id === project?.workspaceId);
