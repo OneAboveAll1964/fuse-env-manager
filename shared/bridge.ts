@@ -186,7 +186,13 @@ export type FuseBridge = {
     update(id: Id, patch: Partial<EnvFile>): Promise<VaultData>;
     remove(id: Id): Promise<VaultData>;
     duplicate(id: Id, name: string): Promise<{ data: VaultData; file: EnvFile }>;
-    move(id: Id, projectId: Id, folderId: Id | null): Promise<VaultData>;
+    copyTo(
+      id: Id,
+      projectId: Id,
+      folderId: Id | null,
+      name?: string,
+    ): Promise<{ data: VaultData; file: EnvFile }>;
+    move(id: Id, projectId: Id, folderId: Id | null, name?: string): Promise<VaultData>;
     render(id: Id, options: RenderOptions): Promise<string>;
     preview(id: Id, text: string, format: EnvFormat | 'auto'): Promise<ImportPreview>;
     writeToDisk(id: Id, targetPath: string, options: RenderOptions): Promise<string>;

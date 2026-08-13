@@ -333,8 +333,11 @@ export function registerIpc(resolveWindow: () => BrowserWindow | null): void {
   );
   ipcMain.handle('files:remove', (_e, id: Id) => ops.removeFile(id));
   ipcMain.handle('files:duplicate', (_e, id: Id, name: string) => ops.duplicateFile(id, name));
-  ipcMain.handle('files:move', (_e, id: Id, projectId: Id, folderId: Id | null) =>
-    ops.moveFile(id, projectId, folderId),
+  ipcMain.handle('files:copy-to', (_e, id: Id, projectId: Id, folderId: Id | null, name?: string) =>
+    ops.copyFileTo(id, projectId, folderId, name),
+  );
+  ipcMain.handle('files:move', (_e, id: Id, projectId: Id, folderId: Id | null, name?: string) =>
+    ops.moveFile(id, projectId, folderId, name),
   );
   ipcMain.handle('files:render', (_e, id: Id, options: RenderOptions) =>
     ops.renderFile(id, options),

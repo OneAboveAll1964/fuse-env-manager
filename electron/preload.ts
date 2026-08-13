@@ -77,7 +77,9 @@ const bridge: FuseBridge = {
     update: (id, patch) => invoke('files:update', id, patch),
     remove: (id) => invoke('files:remove', id),
     duplicate: (id, name) => invoke('files:duplicate', id, name),
-    move: (id, projectId, folderId) => invoke('files:move', id, projectId, folderId),
+    copyTo: (id, projectId, folderId, name) =>
+      invoke('files:copy-to', id, projectId, folderId, name),
+    move: (id, projectId, folderId, name) => invoke('files:move', id, projectId, folderId, name),
     render: (id, options) => invoke('files:render', id, options),
     preview: (id, text, format) => invoke('files:preview', id, text, format),
     writeToDisk: (id, targetPath, options) =>

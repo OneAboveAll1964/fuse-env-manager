@@ -821,16 +821,77 @@ export async function duplicateFile(
   return { data, file };
 }
 
-export function moveFile(id: Id, projectId: Id, folderId: Id | null): Promise<VaultData> {
+export async function copyFileTo(
+  id: Id,
+  projectId: Id,
+  folderId: Id | null,
+  name?: string,
+): Promise<{ data: VaultData; file: EnvFile }> {
+  const newFileId = newId();
+  const data = await mutate((draft) => {
+    const source = draft.files.find((f) => f.id === id);
+    if (!source) notFound('file');
+    const siblings = draft.files.filter(
+      (f) => f.projectId === projectId && f.folderId === folderId,
+    );
+    const file: EnvFile = {
+      ...source,
+      id: newFileId,
+      projectId,
+      folderId,
+      name: uniqueName(
+        name?.trim() || source.name,
+        siblings.map((f) => f.name),
+      ),
+      order: nextOrder(siblings),
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    draft.files.push(file);
+    for (const variable of draft.vars.filter((v) => v.fileId === id)) {
+      draft.vars.push({
+        ...variable,
+        id: newId(),
+        fileId: file.id,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      });
+    }
+    record(draft, {
+      kind: 'duplicate',
+      entity: 'file',
+      entityId: file.id,
+      label: file.name,
+      path: filePath(draft, file.id),
+      before: null,
+      after: { files: [file] },
+    });
+  });
+  const file = data.files.find((f) => f.id === newFileId);
+  if (!file) notFound('file');
+  return { data, file };
+}
+
+export function moveFile(
+  id: Id,
+  projectId: Id,
+  folderId: Id | null,
+  name?: string,
+): Promise<VaultData> {
   return mutate((data) => {
     const file = data.files.find((f) => f.id === id);
     if (!file) notFound('file');
     const before = { ...file };
+    const siblings = data.files.filter(
+      (f) => f.projectId === projectId && f.folderId === folderId && f.id !== id,
+    );
     file.projectId = projectId;
     file.folderId = folderId;
-    file.order = nextOrder(
-      data.files.filter((f) => f.projectId === projectId && f.folderId === folderId),
+    file.name = uniqueName(
+      name?.trim() || file.name,
+      siblings.map((f) => f.name),
     );
+    file.order = nextOrder(siblings);
     file.updatedAt = nowIso();
     record(data, {
       kind: 'move',

@@ -45,6 +45,7 @@ import { nodeMenuItems, type TreeAction } from '@/components/nodeActions';
 import { FileDialog } from '@/components/dialogs/FileDialog';
 import { FolderDialog } from '@/components/dialogs/FolderDialog';
 import { ImportDialog } from '@/components/dialogs/ImportDialog';
+import { MoveFileDialog } from '@/components/dialogs/MoveFileDialog';
 import { MoveVarsDialog } from '@/components/dialogs/MoveVarsDialog';
 import { ProjectDialog } from '@/components/dialogs/ProjectDialog';
 import { VariableDialog } from '@/components/dialogs/VariableDialog';
@@ -74,7 +75,8 @@ type DialogState =
   | { kind: 'variable'; id: string | null }
   | { kind: 'import' }
   | { kind: 'render' }
-  | { kind: 'transfer'; action: 'copy' | 'move' };
+  | { kind: 'transfer'; action: 'copy' | 'move' }
+  | { kind: 'move-file'; fileId: string; action: 'move' | 'copy' };
 
 function parseLocation(raw: string | null): Location {
   if (!raw || raw === 'root') return ROOT;
@@ -405,6 +407,14 @@ export function VaultPage(): JSX.Element {
         } catch (err) {
           toast.error('Could not duplicate', errorMessage(err));
         }
+        return;
+      case 'move-to':
+        if (action.node.kind === 'file')
+          setDialog({ kind: 'move-file', fileId: action.node.id, action: 'move' });
+        return;
+      case 'copy-to':
+        if (action.node.kind === 'file')
+          setDialog({ kind: 'move-file', fileId: action.node.id, action: 'copy' });
         return;
       case 'export':
         try {
@@ -1029,6 +1039,12 @@ export function VaultPage(): JSX.Element {
         action={dialog.kind === 'transfer' ? dialog.action : 'copy'}
         onClose={() => setDialog({ kind: 'none' })}
         onDone={() => setSelected([])}
+      />
+      <MoveFileDialog
+        open={dialog.kind === 'move-file'}
+        file={dialog.kind === 'move-file' ? (fileById(dialog.fileId) ?? null) : null}
+        action={dialog.kind === 'move-file' ? dialog.action : 'move'}
+        onClose={() => setDialog({ kind: 'none' })}
       />
 
       <Modal

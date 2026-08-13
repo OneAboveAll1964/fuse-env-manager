@@ -1,4 +1,14 @@
-import { Copy, Download, FileCode2, FolderPlus, LogIn, Pencil, Trash2 } from 'lucide-react';
+import {
+  Copy,
+  CopyPlus,
+  Download,
+  FileCode2,
+  FolderInput,
+  FolderPlus,
+  LogIn,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import type { TreeNode } from '@shared/types';
 import type { MenuItem } from '@/components/ui';
 
@@ -9,6 +19,8 @@ export type TreeAction =
   | { kind: 'open'; node: TreeNode }
   | { kind: 'edit'; node: TreeNode }
   | { kind: 'duplicate'; node: TreeNode }
+  | { kind: 'move-to'; node: TreeNode }
+  | { kind: 'copy-to'; node: TreeNode }
   | { kind: 'delete'; node: TreeNode }
   | { kind: 'export'; node: TreeNode };
 
@@ -112,6 +124,24 @@ export function nodeMenuItems(
         remove,
       ];
     default:
-      return [...open, edit, duplicate, exportItem, remove];
+      return [
+        ...open,
+        edit,
+        duplicate,
+        {
+          key: 'move-to',
+          label: 'Move to…',
+          icon: <FolderInput size={14} />,
+          onSelect: () => onAction({ kind: 'move-to', node }),
+        },
+        {
+          key: 'copy-to',
+          label: 'Copy to…',
+          icon: <CopyPlus size={14} />,
+          onSelect: () => onAction({ kind: 'copy-to', node }),
+        },
+        exportItem,
+        remove,
+      ];
   }
 }
