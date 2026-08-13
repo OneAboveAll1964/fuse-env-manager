@@ -526,7 +526,11 @@ export async function pull(args: ParsedArgs): Promise<number> {
     if (bare) {
       const projectId = found.link.projectId;
       if (projectId && data.projects.some((p) => p.id === projectId)) {
-        const environments = listEnvironments(data, projectId, maps[0]?.fileId ?? null);
+        const environments = listEnvironments(
+          data,
+          projectId,
+          focusedMapping(data, found.link)?.fileId ?? null,
+        );
         const named = matchEnvironment(environments, bare);
         if (named.length === 1) {
           if (maps.length > 1) return mapAndPull(data, found, named[0], args);
@@ -1496,7 +1500,7 @@ export async function use(args: ParsedArgs): Promise<number> {
     return 1;
   }
 
-  const currentFileId = resolveLinkedFile(data, found.link);
+  const currentFileId = focusedMapping(data, found.link)?.fileId ?? null;
   const projectId =
     found.link.projectId && data.projects.some((p) => p.id === found.link.projectId)
       ? found.link.projectId
