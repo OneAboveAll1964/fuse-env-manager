@@ -233,6 +233,18 @@ export function CliPage(): JSX.Element {
             title="Run a command with the variables injected"
             code={'fuse run --file "Acme Studio/Storefront API/production/.env" -- node server.js'}
           />
+          <CodeBlock
+            title="Keep every environment checked in, each in its own file"
+            code={[
+              'fuse link --file "Acme/API/development/.env" --as dev.env',
+              'fuse link --add --file "Acme/API/production/.env" --as prod.env',
+              'fuse pull --all',
+            ].join('\n')}
+          />
+          <CodeBlock
+            title="Move between them, then work as usual"
+            code={['fuse switch prod', 'fuse pull', 'fuse push'].join('\n')}
+          />
         </div>
       </Card>
 

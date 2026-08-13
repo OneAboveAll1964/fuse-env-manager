@@ -78,6 +78,8 @@ export const COMMANDS: CommandDoc[] = [
       ['--dir', 'Write into a different folder'],
       ['--format', 'Render in any supported format instead of the file default'],
       ['--link', 'Link this folder to the file afterwards'],
+      ['--all', 'Refresh every file this folder maps, each from its own environment'],
+      ['--env', 'Pick a mapped environment by name instead of the focused one'],
       ['--yes, -y', 'Overwrite an existing file without asking'],
     ],
   },
@@ -109,12 +111,28 @@ export const COMMANDS: CommandDoc[] = [
         code: 'fuse push .env --file "Acme Studio/Storefront API/development/.env"',
       },
       {
+        title: 'By environment name, in a linked folder',
+        code: 'fuse push production',
+        note: 'Pushes whichever local file production is mapped to here.',
+      },
+      {
+        title: 'Every mapped file at once',
+        code: 'fuse push --all',
+      },
+      {
+        title: 'A second file the folder does not map yet',
+        code: 'fuse push .env.example',
+        note: 'Asks where in the linked project it should live, creates it there, and maps it.',
+      },
+      {
         title: 'In CI, never touching what is already stored',
         code: 'fuse push .env --yes --mode skip',
       },
     ],
     flags: [
       ['--file, -f', 'The destination in the vault'],
+      ['--all', 'Push every file this folder maps, each to its own environment'],
+      ['--no-link', 'Do not map a newly placed file on the link'],
       ['--format', 'Force the input format instead of detecting it'],
       ['--mode', 'merge to let the local file win, skip to keep the vault, replace to clear first'],
       ['--link', 'Link this folder to the destination afterwards'],
@@ -127,15 +145,17 @@ export const COMMANDS: CommandDoc[] = [
     group: 'Everyday',
     summary: 'Compare this folder with the vault and pick a direction',
     detail:
-      'Shows a table of what only exists locally, what only exists in the vault and what differs, then asks which side should win. Nothing is written until you choose.',
+      'Shows a table of what only exists locally, what only exists in the vault and what differs, then asks which side should win. Nothing is written until you choose. In a folder mapped to several environments it compares the focused file; --all walks the whole set.',
     examples: [
       { title: 'Have a look before deciding', code: 'fuse sync' },
+      { title: 'Every mapped file in this folder', code: 'fuse sync --all' },
       { title: 'Take the vault version without asking', code: 'fuse sync --yes --direction pull' },
       { title: 'Take the local version without asking', code: 'fuse sync --yes --direction push' },
     ],
     flags: [
       ['--direction', 'pull to take the vault version, push to take the local one'],
       ['--as', 'Compare against a different local file name'],
+      ['--all', 'Compare every file this folder maps'],
     ],
   },
   {
@@ -166,6 +186,7 @@ export const COMMANDS: CommandDoc[] = [
       { title: 'Point the file at production', code: 'fuse use production' },
       { title: 'Pick from a list', code: 'fuse use' },
       { title: 'See what is mapped here', code: 'fuse use --list' },
+      { title: 'env works too', code: 'fuse env production' },
     ],
   },
   {
@@ -181,6 +202,17 @@ export const COMMANDS: CommandDoc[] = [
         title: 'Map a second environment alongside',
         code: 'fuse link --add --file "Acme/API/production/.env" --as prod.env',
       },
+      { title: 'Map a second environment without questions', code: 'fuse link --add' },
+    ],
+  },
+  {
+    name: 'unlink',
+    usage: 'fuse unlink [environment]',
+    group: 'Everyday',
+    summary: 'Remove the link, or just one mapped environment',
+    detail:
+      'With a name it unmaps that one environment and leaves the rest of the link alone, moving the focus if the focused file was the one removed. With no arguments it removes the whole .fuse.json. Nothing in the vault or on disk is touched either way.',
+    examples: [
       { title: 'Unmap one environment', code: 'fuse unlink production' },
       { title: 'Remove the whole link', code: 'fuse unlink' },
     ],
@@ -222,6 +254,7 @@ export const COMMANDS: CommandDoc[] = [
     ],
     flags: [
       ['--file, -f', 'Which file to read'],
+      ['--env', 'Pick a mapped environment by name instead of the focused one'],
       ['--json', 'Print the whole file as a JSON object'],
       ['--format', 'Print the whole file in a specific format'],
     ],
@@ -259,7 +292,7 @@ export const COMMANDS: CommandDoc[] = [
     group: 'Browse',
     summary: 'Vault, bridge and link state for this folder',
     detail:
-      'Where the vault is, whether the desktop app is open and reachable, whether a session is cached, and what this folder resolves to. The first thing to run when something is not behaving.',
+      'Where the vault is, whether the desktop app is open and reachable, whether a session is cached, and what this folder resolves to. In a linked folder it lists every mapping and marks the focused one. The first thing to run when something is not behaving.',
     examples: [
       { title: 'Full status', code: 'fuse status' },
       { title: 'Just the header, no vault contents', code: 'fuse status --quiet' },
@@ -285,6 +318,7 @@ export const COMMANDS: CommandDoc[] = [
     ],
     flags: [
       ['--file, -f', 'Which file to write to'],
+      ['--env', 'Pick a mapped environment by name instead of the focused one'],
       ['--yes, -y', 'Do not show the confirmation'],
     ],
   },
@@ -404,8 +438,12 @@ export const COMMANDS: CommandDoc[] = [
         code: 'fuse run --file "API/production/.env" -- node server.js',
       },
       { title: 'A one-off script', code: 'fuse run -- psql "$DATABASE_URL"' },
+      { title: 'A mapped environment by name', code: 'fuse run --env production -- npm start' },
     ],
-    flags: [['--file, -f', 'Which file to inject']],
+    flags: [
+      ['--file, -f', 'Which file to inject'],
+      ['--env', 'Pick a mapped environment by name instead of the focused one'],
+    ],
   },
   {
     name: 'export',
@@ -434,6 +472,7 @@ export const COMMANDS: CommandDoc[] = [
     ],
     flags: [
       ['--file, -f', 'Which file to render'],
+      ['--env', 'Pick a mapped environment by name instead of the focused one'],
       ['--format', 'dotenv, json, yaml, toml, shell, docker, k8s-secret and more'],
     ],
   },
@@ -559,8 +598,17 @@ export const COMMANDS: CommandDoc[] = [
     examples: [
       { title: 'The default fifteen minutes', code: 'fuse unlock' },
       { title: 'A working day', code: 'fuse unlock --ttl 8h' },
-      { title: 'Drop it again', code: 'fuse lock' },
     ],
+    flags: [['--ttl', 'How long to keep the session, like 15m or 8h']],
+  },
+  {
+    name: 'lock',
+    usage: 'fuse lock',
+    group: 'Session',
+    summary: 'Drop the cached session',
+    detail:
+      'Removes the session fuse unlock cached, so the next command asks for the master password again. Locking when there is no session is fine and does nothing.',
+    examples: [{ title: 'Lock it now', code: 'fuse lock' }],
   },
   {
     name: 'doctor',
