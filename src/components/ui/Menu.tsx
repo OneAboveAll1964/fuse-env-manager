@@ -64,9 +64,9 @@ export function Menu({
         minWidth={width}
         maxWidth={width + 96}
         maxHeight={420}
-        className={align === 'end' ? 'origin-top-right' : 'origin-top-left'}
+        className={clsx('flex flex-col', align === 'end' ? 'origin-top-right' : 'origin-top-left')}
       >
-        <ul className="max-h-[420px] overflow-y-auto p-1.5">
+        <ul className="min-h-0 overflow-y-auto p-1.5">
           {items.map((item) => (
             <li key={item.key}>
               {item.separatorBefore && (

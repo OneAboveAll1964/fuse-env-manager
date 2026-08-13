@@ -191,9 +191,14 @@ function SelectInner<T extends string | number>(
           )}
         </button>
 
-        <PopoverPanel open={open} triggerRef={triggerRef} onRequestClose={() => setOpen(false)}>
+        <PopoverPanel
+          open={open}
+          triggerRef={triggerRef}
+          onRequestClose={() => setOpen(false)}
+          className="flex flex-col"
+        >
           {isSearchable && (
-            <div className="border-b border-slate-100 p-2 dark:border-slate-800">
+            <div className="shrink-0 border-b border-slate-100 p-2 dark:border-slate-800">
               <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 focus-within:bg-white dark:border-slate-800 dark:bg-slate-800">
                 <Search size={14} className="text-slate-400" />
                 <input
@@ -210,7 +215,7 @@ function SelectInner<T extends string | number>(
               </div>
             </div>
           )}
-          <ul role="listbox" className="max-h-72 overflow-y-auto p-2">
+          <ul role="listbox" className="min-h-0 overflow-y-auto p-2">
             {filtered.length === 0 ? (
               <li className="px-3 py-6 text-center text-xs text-slate-400">{emptyText}</li>
             ) : (
