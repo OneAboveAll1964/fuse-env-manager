@@ -96,7 +96,7 @@ export const COMMANDS: CommandDoc[] = [
     group: 'Everyday',
     summary: 'Send a local env file into the vault',
     detail:
-      'Reads a local file, works out its format, and stores it. In a folder mapped to several environments a bare push sends the focused file to its own environment; --all scans every mapped file instead. Conflicting keys are shown before anything is written, and you choose whether the local file wins, the vault wins, or the whole file is replaced. A destination that does not exist yet is created as it goes.',
+      'Reads a local file, works out its format, and stores it. In a folder mapped to several environments a bare push sends the focused file to its own environment; --all scans every mapped file instead. Conflicting keys are shown before anything is written, and you choose whether the local file wins, the vault wins, or the whole file is replaced. Pushing a file the folder does not map yet never lands in the linked environment by accident: you are asked where in the project it should live, it is created there, and the folder maps it from then on.',
     examples: [
       { title: "Send this folder's .env", code: 'cd ~/code/my-service\nfuse push .env' },
       {

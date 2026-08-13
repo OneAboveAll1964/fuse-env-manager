@@ -20,7 +20,6 @@ import {
   matchMappings,
   projectForDirectory,
   readLink,
-  resolveLinkedFile,
   resolvedMappings,
   writeLink,
   writeMappings,
@@ -899,54 +898,83 @@ export async function push(args: ParsedArgs): Promise<number> {
     ? findFile(data, flagString(args, 'file', 'f') as string)
     : null;
 
-  if (!target) {
-    const linked = readLink(cwd);
-    const linkedId = linked ? resolveLinkedFile(data, linked.link) : null;
-    if (linkedId) target = data.files.find((f) => f.id === linkedId) ?? null;
+  const linkedHere = readLink(cwd);
+  const linkedProject = linkedHere
+    ? (data.projects.find((p) => p.id === linkedHere.link.projectId) ?? null)
+    : null;
+
+  if (!target && linkedHere) {
+    const maps = resolvedMappings(data, linkedHere.link);
+    const base = path.basename(sourcePath);
+    const hit = maps.find((rm) => mappingLocalName(data, rm) === base);
+    if (hit) {
+      target = data.files.find((f) => f.id === hit.fileId) ?? null;
+    } else if (maps.length > 0) {
+      info(`${base} is not mapped in this folder yet`, 'so it needs a place in the vault');
+    }
   }
 
   if (!target) {
     if (!isInteractive()) {
-      failure('Pass --file "Workspace/Project/folder/.env" when running without a terminal.');
+      failure(
+        `${path.basename(sourcePath)} has no home in the vault yet. Pass --file "Workspace/Project/folder/.env", or run this in a terminal to place it.`,
+      );
       return 1;
     }
 
-    let workspace = await pickWorkspace(data, 'Which workspace should this go to?');
-    if (!workspace) {
-      const name = await text('Name the first workspace', { initial: 'Personal' });
-      data = await client.save((draft) => {
-        createWorkspace(draft, name);
-      });
-      workspace = data.workspaces[data.workspaces.length - 1];
-    }
-
-    let project = await (async () => {
-      const list = data.projects.filter((p) => p.workspaceId === workspace?.id);
-      if (list.length === 0) return null;
-      const choice = await select<string>('Which project?', [
-        ...list.map<Choice<string>>((p) => ({ value: p.id, label: p.name })),
-        { value: '__new__', label: c.green('+ new project') },
-      ]);
-      return choice === '__new__' ? null : (list.find((p) => p.id === choice) ?? null);
-    })();
+    let project = linkedProject;
 
     if (!project) {
-      const suggested = path.basename(cwd);
-      const name = await text('Name the project', { initial: suggested });
-      const workspaceId = workspace.id;
-      data = await client.save((draft) => {
-        createProject(draft, workspaceId, name);
-      });
-      project = data.projects[data.projects.length - 1];
+      let workspace = await pickWorkspace(data, 'Which workspace should this go to?');
+      if (!workspace) {
+        const name = await text('Name the first workspace', { initial: 'Personal' });
+        data = await client.save((draft) => {
+          createWorkspace(draft, name);
+        });
+        workspace = data.workspaces[data.workspaces.length - 1];
+      }
+
+      project = await (async () => {
+        const list = data.projects.filter((p) => p.workspaceId === workspace?.id);
+        if (list.length === 0) return null;
+        const choice = await select<string>('Which project?', [
+          ...list.map<Choice<string>>((p) => ({ value: p.id, label: p.name })),
+          { value: '__new__', label: c.green('+ new project') },
+        ]);
+        return choice === '__new__' ? null : (list.find((p) => p.id === choice) ?? null);
+      })();
+
+      if (!project) {
+        const suggested = path.basename(cwd);
+        const name = await text('Name the project', { initial: suggested });
+        const workspaceId = workspace.id;
+        data = await client.save((draft) => {
+          createProject(draft, workspaceId, name);
+        });
+        project = data.projects[data.projects.length - 1];
+      }
     }
 
-    const folderChoice = await select<string>('Which folder?', [
-      ...data.folders
-        .filter((f) => f.projectId === project?.id)
-        .map<Choice<string>>((f) => ({ value: f.id, label: f.name })),
-      { value: '__root__', label: c.grey('(project root)') },
-      { value: '__new__', label: c.green('+ new folder') },
-    ]);
+    const stem = localStem(path.basename(sourcePath));
+    const projectFolders = data.folders
+      .filter((f) => f.projectId === project?.id)
+      .sort((a, b) => {
+        const fit = (name: string): number =>
+          stem.length >= 3 &&
+          (name.toLowerCase().startsWith(stem) || stem.startsWith(name.toLowerCase()))
+            ? 0
+            : 1;
+        return fit(a.name) - fit(b.name);
+      });
+
+    const folderChoice = await select<string>(
+      `Where in ${project.name} should ${path.basename(sourcePath)} live?`,
+      [
+        ...projectFolders.map<Choice<string>>((f) => ({ value: f.id, label: f.name })),
+        { value: '__root__', label: c.grey('(project root)') },
+        { value: '__new__', label: c.green('+ new folder') },
+      ],
+    );
 
     let folderId: string | null =
       folderChoice === '__root__' || folderChoice === '__new__' ? null : folderChoice;
@@ -1048,6 +1076,32 @@ export async function push(args: ParsedArgs): Promise<number> {
   rememberLocalName(linkForNames, destination.id, path.basename(sourcePath));
 
   const alreadyLinked = Boolean(linkForNames);
+
+  if (alreadyLinked && linkForNames && linkForNames.dir === cwd && !flagBool(args, 'no-link')) {
+    const mapsNow = mappingsOf(linkForNames.link);
+    if (!mapsNow.some((m) => m.fileId === destination.id)) {
+      const fresh = client.data;
+      const label = listEnvironments(fresh, destination.projectId, destination.id).find(
+        (env) => env.fileId === destination.id,
+      )?.label;
+      writeMappings(linkForNames.dir, linkForNames.link, [
+        ...mapsNow,
+        {
+          environment: label,
+          folder: folderPath(fresh, destination.folderId).join('/') || undefined,
+          file: destination.name,
+          local: path.basename(sourcePath),
+          fileId: destination.id,
+          folderId: destination.folderId ?? undefined,
+        },
+      ]);
+      info(
+        `Mapped ${label ?? destination.name}`,
+        `${path.basename(sourcePath)} — fuse switch ${label ?? destination.name} to work on it`,
+      );
+    }
+  }
+
   if (!alreadyLinked && !flagBool(args, 'no-link')) {
     const fresh = client.data;
     const destProject = fresh.projects.find((p) => p.id === destination.projectId);
