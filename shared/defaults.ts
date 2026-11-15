@@ -16,8 +16,8 @@ export const TONES: Tone[] = [
 ];
 
 export const TONE_HEX: Record<Tone, string> = {
-  brand: '#1c5288',
-  accent: '#06a79e',
+  brand: '#2563eb',
+  accent: '#ea580c',
   emerald: '#059669',
   amber: '#d97706',
   rose: '#e11d48',
@@ -25,7 +25,7 @@ export const TONE_HEX: Record<Tone, string> = {
   sky: '#0284c7',
   teal: '#0d9488',
   fuchsia: '#c026d3',
-  slate: '#4a6076',
+  slate: '#475569',
 };
 
 export const WORKSPACE_ICONS = [

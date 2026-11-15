@@ -63,7 +63,7 @@ export function Sider({
   return (
     <aside
       className={clsx(
-        'flex h-full shrink-0 flex-col border-e border-slate-200 bg-white transition-[width] duration-200 dark:border-slate-800 dark:bg-slate-900',
+        'flex h-full shrink-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-[width] duration-200 dark:border-slate-800 dark:bg-slate-900',
         collapsed ? 'w-[68px]' : 'w-[248px]',
       )}
     >
@@ -201,8 +201,8 @@ export function Sider({
                   'flex select-none items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] transition-colors',
                   collapsed && 'justify-center px-0',
                   isActive
-                    ? 'bg-brand-100 font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300 dark:ring-1 dark:ring-inset dark:ring-brand-500/30'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+                    ? 'bg-brand-600 font-medium text-white'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
                 )
               }
             >

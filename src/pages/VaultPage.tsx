@@ -575,7 +575,8 @@ export function VaultPage(): JSX.Element {
   );
 
   return (
-    <div className="flex h-full min-h-0">
+    // One rounded panel floating beside the sidebar, 12 px from the window's edges.
+    <div className="my-3 me-3 flex h-[calc(100%-1.5rem)] min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div
         style={{ width: treeWidth }}
         className="flex shrink-0 flex-col bg-white dark:bg-slate-900"

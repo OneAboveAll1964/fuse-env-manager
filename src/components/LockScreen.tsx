@@ -103,16 +103,18 @@ export function LockScreen(): JSX.Element {
   const deviceMode = mode === 'device' && status.deviceKey;
 
   return (
-    <div className="flex h-full flex-col bg-surface dark:bg-slate-950">
-      <div className="app-drag flex h-12 shrink-0 items-stretch border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <WindowControls />
-        <div className="flex flex-1 items-center px-3">
-          <span className="pointer-events-none text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-            {t('app.name')}
-          </span>
-        </div>
-        <div className="app-no-drag flex items-stretch border-s border-slate-200 dark:border-slate-800">
-          <ThemeToggle />
+    <div className="flex h-full flex-col bg-surface-sunken dark:bg-slate-950">
+      <div className="app-drag shrink-0 px-3 pt-3">
+        <div className="flex h-12 items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <WindowControls />
+          <div className="flex flex-1 items-center px-3">
+            <span className="pointer-events-none text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+              {t('app.name')}
+            </span>
+          </div>
+          <div className="app-no-drag flex items-stretch border-s border-slate-200 dark:border-slate-800">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 
