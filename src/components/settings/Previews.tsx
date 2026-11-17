@@ -40,13 +40,13 @@ function MiniWindow({ dark }: { dark: boolean }): JSX.Element {
     <div
       className={clsx(
         'flex h-[72px] overflow-hidden rounded-lg border',
-        dark ? 'border-slate-700 bg-[#061423]' : 'border-slate-200 bg-[#f6f9fc]',
+        dark ? 'border-slate-700 bg-[#09090b]' : 'border-slate-200 bg-[#f1f5f4]',
       )}
     >
       <div
         className={clsx(
           'flex w-[26px] shrink-0 flex-col gap-1 border-e p-1.5',
-          dark ? 'border-slate-700 bg-[#0e1f33]' : 'border-slate-200 bg-white',
+          dark ? 'border-slate-700 bg-[#18181b]' : 'border-slate-200 bg-white',
         )}
       >
         <span className="block h-1.5 w-1.5 rounded-full bg-brand-600" />

@@ -69,68 +69,75 @@ export function AppLayout(): JSX.Element {
   };
 
   return (
-    <div className="flex h-full flex-col bg-surface dark:bg-slate-950">
-      <div className="app-drag flex h-12 shrink-0 select-none items-stretch border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <WindowControls />
+    <div className="flex h-full flex-col bg-surface-sunken dark:bg-slate-950">
+      {/* The window's title bar: a rounded panel floating over the page, like the sidebar. The gap
+          around it drags the window too. */}
+      <div className="app-drag shrink-0 select-none px-3 pt-3">
+        <div className="flex h-12 items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <WindowControls />
 
-        <div className="flex flex-1 items-center justify-center px-4">
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            className="app-no-drag flex h-8 w-full max-w-md items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-start text-[12px] text-slate-400 transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-500 dark:hover:border-slate-700"
-          >
-            <Search size={13} className="shrink-0" />
-            <span className="flex-1 truncate">
-              {activeWorkspace ? `Search ${activeWorkspace.name}…` : 'Search…'}
-            </span>
-            <Kbd keys={['⌘', 'K']} className="shrink-0" />
-          </button>
-        </div>
-
-        <div className="flex items-stretch">
-          <div className="app-no-drag hidden items-center gap-3 border-s border-slate-200 px-3 text-[11px] text-slate-500 lg:flex dark:border-slate-800 dark:text-slate-400">
-            <span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
-                {data.projects.length}
-              </span>{' '}
-              projects
-            </span>
-            <span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
-                {data.files.length}
-              </span>{' '}
-              files
-            </span>
-            <span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">
-                {data.vars.length}
-              </span>{' '}
-              variables
-            </span>
-          </div>
-          <div className="app-no-drag flex h-full items-stretch border-s border-slate-200 dark:border-slate-800">
+          <div className="flex flex-1 items-center justify-center px-4">
             <button
               type="button"
-              onClick={() => void lock()}
-              title={`${t('nav.lock')} (⌘⇧L)`}
-              aria-label={t('nav.lock')}
-              className="inline-flex h-full w-11 items-center justify-center text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              onClick={() => setPaletteOpen(true)}
+              className="app-no-drag flex h-8 w-full max-w-md items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-start text-[12px] text-slate-400 transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-500 dark:hover:border-slate-700"
             >
-              <Lock size={13} />
+              <Search size={13} className="shrink-0" />
+              <span className="flex-1 truncate">
+                {activeWorkspace ? `Search ${activeWorkspace.name}…` : 'Search…'}
+              </span>
+              <Kbd keys={['⌘', 'K']} className="shrink-0" />
             </button>
-            <ThemeToggle />
+          </div>
+
+          <div className="flex items-stretch">
+            <div className="app-no-drag hidden items-center gap-3 border-s border-slate-200 px-3 text-[11px] text-slate-500 lg:flex dark:border-slate-800 dark:text-slate-400">
+              <span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {data.projects.length}
+                </span>{' '}
+                projects
+              </span>
+              <span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {data.files.length}
+                </span>{' '}
+                files
+              </span>
+              <span>
+                <span className="font-semibold text-slate-700 dark:text-slate-200">
+                  {data.vars.length}
+                </span>{' '}
+                variables
+              </span>
+            </div>
+            <div className="app-no-drag flex h-full items-stretch border-s border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => void lock()}
+                title={`${t('nav.lock')} (⌘⇧L)`}
+                aria-label={t('nav.lock')}
+                className="inline-flex h-full w-11 items-center justify-center text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              >
+                <Lock size={13} />
+              </button>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <Sider
-          collapsed={collapsed}
-          onToggleCollapsed={() => void toggleCollapsed()}
-          onLock={() => void lock()}
-          onNewWorkspace={() => setWorkspaceDialog(true)}
-          onSelectWorkspace={(id) => void selectWorkspace(id)}
-        />
+        {/* The sidebar floats beside the page with a gap all round. */}
+        <div className="flex shrink-0 p-3">
+          <Sider
+            collapsed={collapsed}
+            onToggleCollapsed={() => void toggleCollapsed()}
+            onLock={() => void lock()}
+            onNewWorkspace={() => setWorkspaceDialog(true)}
+            onSelectWorkspace={(id) => void selectWorkspace(id)}
+          />
+        </div>
         <main className="min-h-0 flex-1 overflow-hidden">
           <Outlet />
         </main>
